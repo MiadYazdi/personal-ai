@@ -1969,3 +1969,11 @@ The project worktree was verified on the home and workplace Ubuntu systems using
 The home worktree is now the canonical development source. The workplace worktree remains an unchanged fallback until source-only Git synchronization is configured. The private Git remote will contain code, tests, documentation, assets, requirements, scripts, and the small model manifest only. It must never contain model weights, Vault data, local preferences, virtual environments, package caches, build outputs, credentials, or recovery material.
 
 The GGUF model is installed independently on each device and verified locally by checksum. The encrypted Vault is not synchronized by Git and must have only one active writable copy at a time. Until an approved portable encrypted Vault workflow exists, the Vault is used only on the home system.
+
+## Home Runtime Bootstrap Implementation v1
+
+The canonical home worktree was prepared and verified on Ubuntu 26.04. Its runtime matches the validated workplace baseline: Python 3.12.13 from the deadsnakes PPA, Node 22.22.1, npm 9.2.0, CMake 4.2.3, GNU g++ 15.2.0, and GNU Make 4.4.1.
+
+Python dependencies are installed in a project-local, Git-ignored `.venv` using Python 3.12 and `requirements/python.lock.txt`. The transferred virtual environment was incomplete and was rebuilt only after explicit confirmation. Frontend dependencies are installed in Git-ignored `apps/web/node_modules` from `package-lock.json`; the transferred dependency directory was also rebuilt after its required local executables were found missing.
+
+Verification on the home system succeeded: the Vite production build completed and all 59 synthetic Python tests passed. The verification did not start the application services, load the GGUF model, or unlock the personal Vault. Model weights, Vault data, local preferences, `.venv`, `node_modules`, and build output remain outside Git.

@@ -165,3 +165,11 @@ Enter never performs a real read. A path or mode change invalidates the precedin
 - Source synchronization uses private Git only after a reviewed first commit and explicit approval before any network push. Model weights, Vault data, local preferences, credentials, recovery material, virtual environments, dependency caches, and build outputs remain outside Git.
 - The encrypted Vault has one active writable location at a time. It is used on the home system until a separately approved portable encrypted storage procedure is available.
 - No worktree is overwritten or deleted merely because another copy exists. Before any future repair or transfer, compare deterministic manifests and transfer only confirmed missing or differing files.
+
+## Home Runtime Rebuild Procedure v1
+
+Machine-local runtime artifacts are never treated as portable project source. On a new or transferred Ubuntu system, Python virtual environments and frontend dependency directories must be audited before use. If a transferred `.venv` or `node_modules` directory is incomplete, it is not silently trusted or overwritten: the user sees the result and explicitly approves its rebuild or preservation.
+
+Runtime installation is disclosed in advance. Adding a package source, installing system packages, downloading Python packages, and downloading frontend packages each require explicit user approval. The canonical home runtime uses Python 3.12.13, Node 22.22.1, and npm 9.2.0. Local build/test verification is completed before any application service is started.
+
+Generated runtime paths remain Git-ignored. The Vault is not used as a synchronization mechanism and remains active only on the home system until a separately approved portable encrypted storage workflow is available.

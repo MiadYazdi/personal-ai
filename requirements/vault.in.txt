@@ -1,0 +1,2 @@
+# Direct dependency for Personal AI Hybrid Vault
+cryptography==49.0.0

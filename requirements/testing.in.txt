@@ -1,0 +1,2 @@
+# Local FastAPI synthetic API test client
+httpx2==2.7.0

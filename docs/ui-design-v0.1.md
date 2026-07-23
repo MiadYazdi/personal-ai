@@ -1158,3 +1158,9 @@ The executor UI uses one consistent confirmation surface for Launch, Terminal, a
 Launch shows desktop entry identity, resolved Exec preview, digest, and the warning that the launched application has its own OS permissions. Terminal shows argv as isolated LTR tokens, canonical cwd, timeout, expected effect, and bounded local-output policy. Write shows canonical path, create/overwrite state, sizes, hashes, and a readable diff or precise change summary.
 
 High-risk Terminal and Write actions require Vault unlock and expose only Once. Their local results are never automatically shared with the model or stored in Vault. The active locale controls prose and RTL/LTR behavior; technical values, paths, hashes, and argv remain explicit LTR/BDI.
+
+## Application Launch UI Preview Implementation v1
+
+The Device Agent preview panel includes an Application Launch mode. The user enters only an exact desktop entry ID or `.desktop` path; the UI does not browse or enumerate installed applications. The preview displays application name, desktop entry identity, resolved Exec argv, entry digest, and the warning that the launched application retains its own operating-system permissions.
+
+This UI subphase has no launch button and no execution path. It renders the existing PermissionEngine policy preview only. Technical paths, argv, and digest values remain LTR/BDI while localized warnings and labels follow the active locale.

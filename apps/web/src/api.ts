@@ -374,3 +374,25 @@ export async function streamModelShare(
 export function cancelModelShare(operationId: string): Promise<{ cancelled: boolean }> {
   return requestJson(`/api/v1/device-agent/model-share/cancel/${operationId}`, { method: "POST" });
 }
+
+
+export type ApplicationLaunchPreview = {
+  launch: {
+    desktop_id: string;
+    canonical_desktop_path: string;
+    application_name: string;
+    argv: string[];
+    executable_path: string;
+    desktop_sha256: string;
+    execution: "not_started";
+  };
+  policy: DeviceAgentPreview["policy"];
+  execution_enabled: false;
+};
+
+export function previewApplicationLaunch(desktopEntry: string): Promise<ApplicationLaunchPreview> {
+  return requestJson("/api/v1/device-agent/launch-preview", {
+    method: "POST",
+    body: JSON.stringify({ desktop_entry: desktopEntry }),
+  });
+}

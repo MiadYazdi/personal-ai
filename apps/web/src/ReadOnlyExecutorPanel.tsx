@@ -42,6 +42,7 @@ type Copy = {
   shareRunning: string;
   shareCancel: string;
   shareProgress: string;
+  shareChunks: string;
   shareLargeWarning: string;
   shareError: string;
 };
@@ -76,6 +77,7 @@ const copy: Record<AppLanguage, Copy> = {
     shareRunning: "پردازش محلی در حال انجام است…",
     shareCancel: "لغو پردازش",
     shareProgress: "پیشرفت",
+    shareChunks: "بخش",
     shareLargeWarning: "این متن بزرگ است و پردازش کامل آن ممکن است زمان زیادی بگیرد.",
     shareError: "طرح یا پردازش اشتراک با مدل انجام نشد.",
   },
@@ -108,6 +110,7 @@ const copy: Record<AppLanguage, Copy> = {
     shareRunning: "Local processing is running…",
     shareCancel: "Cancel processing",
     shareProgress: "Progress",
+    shareChunks: "chunks",
     shareLargeWarning: "This text is large; complete processing may take a long time.",
     shareError: "The model-share plan or processing could not be completed.",
   },
@@ -140,6 +143,7 @@ const copy: Record<AppLanguage, Copy> = {
     shareRunning: "المعالجة المحلية جارية…",
     shareCancel: "إلغاء المعالجة",
     shareProgress: "التقدم",
+    shareChunks: "أجزاء",
     shareLargeWarning: "هذا النص كبير وقد تستغرق معالجته الكاملة وقتاً طويلاً.",
     shareError: "تعذر إكمال خطة أو معالجة مشاركة النموذج.",
   },
@@ -172,6 +176,7 @@ const copy: Record<AppLanguage, Copy> = {
     shareRunning: "Yerel işleme sürüyor…",
     shareCancel: "İşlemeyi iptal et",
     shareProgress: "İlerleme",
+    shareChunks: "parça",
     shareLargeWarning: "Bu metin büyük; tam işleme uzun sürebilir.",
     shareError: "Model paylaşım planı veya işlemesi tamamlanamadı.",
   },
@@ -349,10 +354,10 @@ export function ReadOnlyExecutorPanel({ language, thinkingMode, onClose }: { lan
               <strong>{t.sharePlan}</strong>
               <p><bdi dir="ltr">{sharePlan.canonical_path}</bdi></p>
               <p>{t.size}: <bdi dir="ltr">{sharePlan.source_bytes}</bdi> {language === "fa" ? "بایت" : language === "ar" ? "بايت" : language === "tr" ? "bayt" : "bytes"}</p>
-              <p>{t.shareProgress}: <bdi dir="ltr">{sharePlan.chunk_count}</bdi> chunks</p>
+              <p>{t.shareChunks}: <bdi dir="ltr">{sharePlan.chunk_count}</bdi></p>
               {sharePlan.large_share_warning && <p className="readonly-warning"><AlertTriangle size={16} />{t.shareLargeWarning}</p>}
               <label className="readonly-confirm"><input checked={shareConfirmed} disabled={shareRunning} onChange={(event) => setShareConfirmed(event.target.checked)} type="checkbox" /><span>{t.shareConfirm}</span></label>
-              {shareProgress && <p className="readonly-muted">{t.shareProgress}: <bdi dir="ltr">{shareProgress.completed}/{shareProgress.total}</bdi> · <bdi dir="ltr">{shareProgress.phase}</bdi></p>}
+              {shareProgress && <p className="readonly-muted">{t.shareProgress}: <bdi dir="ltr">{shareProgress.completed}/{shareProgress.total}</bdi></p>}
               {shareRunning ? <button className="button" onClick={cancelShare} type="button"><Square size={16} />{t.shareCancel}</button> : <button className="button primary" disabled={!shareConfirmed} onClick={() => void runShare()} type="button"><Share2 size={16} />{t.shareRun}</button>}
             </section>}
             {shareError && <p className="readonly-error">{shareError}</p>}

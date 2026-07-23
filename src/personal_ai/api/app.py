@@ -18,6 +18,10 @@ from personal_ai.agent import (
     UbuntuReadOnlyCapabilityAdapter,
     GrantDecision,
 )
+from personal_ai.agent.launch_executor import (
+    LaunchPreviewError,
+    UbuntuApplicationLaunchPreview,
+)
 from personal_ai.agent.readonly_executor import (
     ReadMode,
     ReadOnlyExecutorError,
@@ -124,6 +128,10 @@ class MemoryCreateRequest(BaseModel):
     content: str
 
 
+class LaunchPreviewRequest(BaseModel):
+    desktop_entry: str
+
+
 class AgentTerminalPreviewRequest(BaseModel):
     argv: list[str]
     cwd: str
@@ -220,6 +228,7 @@ def create_app(
     vault_path: Path | None = None,
     preference_path: Path | None = None,
     chat_runtime: ChatRuntime | None = None,
+    launch_preview_executor: UbuntuApplicationLaunchPreview | None = None,
 ) -> FastAPI:
     active_vault_path = vault_path or VAULT_DATABASE_PATH
     active_preference_path = preference_path or UI_PREFERENCES_PATH
@@ -233,6 +242,7 @@ def create_app(
     permission_engine = PermissionEngine(vault_session_manager)
     capability_adapter = UbuntuReadOnlyCapabilityAdapter()
     read_only_executor = UbuntuReadOnlyExecutor()
+    active_launch_preview_executor = launch_preview_executor or UbuntuApplicationLaunchPreview()
     model_share_service = LocalModelShareService(
         active_chat_runtime, read_only_executor, permission_engine
     )
@@ -258,6 +268,7 @@ def create_app(
     app.state.permission_engine = permission_engine
     app.state.capability_adapter = capability_adapter
     app.state.read_only_executor = read_only_executor
+    app.state.launch_preview_executor = active_launch_preview_executor
     app.state.model_share_service = model_share_service
 
     app.add_middleware(
@@ -564,6 +575,30 @@ def create_app(
                 "execution_enabled": False,
             }
         except Exception as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @app.post("/api/v1/device-agent/launch-preview")
+    def preview_application_launch(request: LaunchPreviewRequest) -> dict[str, object]:
+        try:
+            launch = active_launch_preview_executor.preview(request.desktop_entry)
+            action = AgentActionRequest.create(
+                capability=AgentCapability.LAUNCH_APP,
+                target_scope=launch.canonical_desktop_path,
+                device_id="ubuntu-current-user-session",
+                description="User-requested application launch preview",
+                preview="Launch exact desktop entry without shell execution",
+                audit_metadata={
+                    "desktop_id": launch.desktop_id,
+                    "desktop_sha256": launch.desktop_sha256,
+                    "executable_path": launch.executable_path,
+                },
+            )
+            return {
+                "launch": launch.to_dict(),
+                "policy": permission_engine.preview(action).to_dict(),
+                "execution_enabled": False,
+            }
+        except (LaunchPreviewError, Exception) as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
 
     @app.get("/api/v1/device-agent/audit-status")

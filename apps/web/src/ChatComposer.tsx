@@ -77,6 +77,8 @@ type CopyText = {
   modelShareShow: string;
   modelShareHide: string;
   modelShareSaved: string;
+  bytes: string;
+  chunks: string;
 };
 
 const copy: Record<AppLanguage, CopyText> = {
@@ -123,6 +125,8 @@ const copy: Record<AppLanguage, CopyText> = {
     modelShareShow: "نمایش متن کامل",
     modelShareHide: "بستن متن کامل",
     modelShareSaved: "محتوای اشتراکی در Vault ذخیره شد.",
+    bytes: "بایت",
+    chunks: "بخش",
   },
   en: {
     emptyTitle: "Ready to chat",
@@ -167,6 +171,8 @@ const copy: Record<AppLanguage, CopyText> = {
     modelShareShow: "Show full text",
     modelShareHide: "Hide full text",
     modelShareSaved: "Shared content was saved in Vault.",
+    bytes: "bytes",
+    chunks: "chunks",
   },
   ar: {
     emptyTitle: "جاهز للمحادثة",
@@ -211,6 +217,8 @@ const copy: Record<AppLanguage, CopyText> = {
     modelShareShow: "إظهار النص الكامل",
     modelShareHide: "إخفاء النص الكامل",
     modelShareSaved: "تم حفظ المحتوى المشترك في الخزنة.",
+    bytes: "بايت",
+    chunks: "أجزاء",
   },
   tr: {
     emptyTitle: "Sohbete hazır",
@@ -255,6 +263,8 @@ const copy: Record<AppLanguage, CopyText> = {
     modelShareShow: "Tam metni göster",
     modelShareHide: "Tam metni gizle",
     modelShareSaved: "Paylaşılan içerik Kasaya kaydedildi.",
+    bytes: "bayt",
+    chunks: "parça",
   },
 };
 
@@ -471,7 +481,7 @@ export function ChatComposer({ language, mode }: { language: AppLanguage; mode: 
   return <>
     <div className="chat-transcript" aria-live="polite">
       {messages.length === 0 && modelShares.length === 0 ? <div className="workspace-empty localized-ui-text" dir={uiDirection}><div className="empty-icon"><Sparkles size={36} /></div><h3>{t.emptyTitle}</h3><p>{t.emptySubtitle}</p></div> : <>
-        {modelShares.map((share, index) => <article className="chat-message model-share-message" key={`model-share-${share.sha256}-${index}`}><span>{t.modelShare}</span><p><bdi dir="ltr">{share.canonical_path}</bdi></p><p><bdi dir="ltr">{share.size_bytes}</bdi> bytes · <bdi dir="ltr">{share.chunk_count}</bdi> chunks</p><details><summary>{t.modelShareShow}</summary><pre dir="auto">{share.content}</pre></details></article>)}
+        {modelShares.map((share, index) => <article className="chat-message model-share-message" key={`model-share-${share.sha256}-${index}`}><span>{t.modelShare}</span><p><bdi dir="ltr">{share.canonical_path}</bdi></p><p><bdi dir="ltr">{share.size_bytes}</bdi> {t.bytes} · <bdi dir="ltr">{share.chunk_count}</bdi> {t.chunks}</p><details><summary>{t.modelShareShow}</summary><pre dir="auto">{share.content}</pre></details></article>)}
         {messages.map((message, index) => <article className={`chat-message ${message.role}`} key={`${message.role}-${index}`}><span>{message.role === "user" ? t.you : t.assistant}</span><p dir="auto">{message.content || (sending ? t.sending : "")}</p><div className="chat-message-actions" dir={uiDirection}><button onClick={() => void copyMessage(index)} type="button"><Copy size={14} />{copiedIndex === index ? t.copied : t.copy}</button><button disabled={sending || !message.content} onClick={() => void saveMemory(index)} type="button"><BookmarkPlus size={14} />{t.saveMemory}</button>{message.role === "user" ? <button disabled={sending} onClick={() => edit(index)} type="button"><Pencil size={14} />{t.edit}</button> : <button disabled={sending || index === 0} onClick={() => regenerate(index)} type="button"><RefreshCw size={14} />{t.regenerate}</button>}</div></article>)}
       </>}
     </div>

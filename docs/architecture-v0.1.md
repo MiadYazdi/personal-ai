@@ -1987,3 +1987,9 @@ The model-share path is a separate local-only flow from read-only file access. A
 Model-share audit metadata contains only canonical path, byte count, digest, chunk count, and operation identifier. Raw document content is never written to audit records. The permission decision is one-time and uses the existing safe read-text policy; no persistent grant is created.
 
 A saved conversation may contain an explicitly saved model-share attachment. Raw text is split into encrypted Vault attachment chunks; normal conversation messages store only attachment references and metadata. Attachments are returned as a reconstructed collapsed chat item only when the Vault is unlocked, and are removed with their conversation. The ordinary 8,000-character chat-message limit remains unchanged.
+
+## Local Model Share Synthetic End-to-End Verification v1
+
+A user-controlled end-to-end verification ran on the home system using only `/tmp/personal-ai-model-share-synthetic.txt`, a 214-byte synthetic file containing no personal data, credentials, secrets, or recovery material. The flow completed as designed: preview, confirmed text read, fixed one-chunk plan, separate model-share acknowledgement, local Qwen CPU inference, collapsed chat attachment card, and final assistant response.
+
+The Vault remained locked throughout. No attachment was saved, no personal file was accessed, and no network action occurred. The local model was loaded only after the explicit start action.

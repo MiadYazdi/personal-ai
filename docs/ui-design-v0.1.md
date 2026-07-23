@@ -1146,3 +1146,7 @@ After a confirmed read-text result, the Read-Only panel offers a separate local-
 While local processing runs, the panel shows progress and offers cancellation. Cancellation stops future chunks after the current local model operation completes. The result is sent to the conversation as a local assistant response.
 
 The shared raw content appears in the conversation as a collapsed, expandable card showing path, byte count, and chunk count. It is not a normal chat prompt message, so later ordinary chat requests do not silently include it. If the user explicitly saves the conversation while the Vault is unlocked, the card is persisted as an encrypted attachment; otherwise it remains browser-temporary.
+
+## Local Model Share Synthetic UI Verification v1
+
+The home-browser verification confirmed the Read-Only text result, local model-share plan, one-time confirmation, and Chat card flow using the synthetic `/tmp` file only. The chat card displays localized byte and chunk labels, an expandable raw-text view, and the final local assistant response. No personal file or Vault content was used.

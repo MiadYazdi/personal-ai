@@ -173,3 +173,12 @@ Machine-local runtime artifacts are never treated as portable project source. On
 Runtime installation is disclosed in advance. Adding a package source, installing system packages, downloading Python packages, and downloading frontend packages each require explicit user approval. The canonical home runtime uses Python 3.12.13, Node 22.22.1, and npm 9.2.0. Local build/test verification is completed before any application service is started.
 
 Generated runtime paths remain Git-ignored. The Vault is not used as a synchronization mechanism and remains active only on the home system until a separately approved portable encrypted storage workflow is available.
+
+## Local Model Share Consent and Retention v1
+
+- A read confirmation never substitutes for a model-share confirmation. Sharing text with the local model always requires a separate fixed-plan acknowledgement.
+- The plan displays canonical path, size, digest, chunk count, and sensitivity before execution. It is invalid if its digest no longer matches the supplied text and path context.
+- Large text is never silently shortened. The user may approve the complete local chunk plan, observe progress, and cancel remaining work.
+- Raw shared content is visible in a collapsed conversation card. It remains temporary unless the user explicitly saves the conversation while the Vault is unlocked.
+- Saved raw attachments are encrypted in Vault chunks and are deleted with the conversation. Audit records contain metadata only, never raw content.
+- No model-share test or implementation step accesses a real user file, unlocks a real Vault, or invokes the real model without an explicit user action in the live UI.

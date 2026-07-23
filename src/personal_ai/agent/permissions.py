@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from pathlib import Path
@@ -96,10 +96,30 @@ class AgentActionRequest:
     description: str
     preview: str
     terminal: TerminalPreview | None = None
+    audit_metadata: dict[str, object] = field(default_factory=dict)
 
     @classmethod
-    def create(cls, *, capability: AgentCapability, target_scope: str, device_id: str, description: str, preview: str, terminal: TerminalPreview | None = None) -> "AgentActionRequest":
-        return cls(uuid.uuid4().hex, capability, target_scope, device_id, description, preview, terminal)
+    def create(
+        cls,
+        *,
+        capability: AgentCapability,
+        target_scope: str,
+        device_id: str,
+        description: str,
+        preview: str,
+        terminal: TerminalPreview | None = None,
+        audit_metadata: dict[str, object] | None = None,
+    ) -> "AgentActionRequest":
+        return cls(
+            uuid.uuid4().hex,
+            capability,
+            target_scope,
+            device_id,
+            description,
+            preview,
+            terminal,
+            dict(audit_metadata or {}),
+        )
 
     @property
     def risk(self) -> AgentRisk:
@@ -139,9 +159,10 @@ class AgentAuditEvent:
     risk: AgentRisk
     created_at: str
     deferred: bool
+    audit_metadata: dict[str, object] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, object]:
-        return {"event_id": self.event_id, "action_id": self.action_id, "capability": self.capability, "target_scope": self.target_scope, "device_id": self.device_id, "decision": self.decision, "risk": self.risk, "created_at": self.created_at, "deferred": self.deferred}
+        return {"event_id": self.event_id, "action_id": self.action_id, "capability": self.capability, "target_scope": self.target_scope, "device_id": self.device_id, "decision": self.decision, "risk": self.risk, "created_at": self.created_at, "deferred": self.deferred, "audit_metadata": self.audit_metadata}
 
 
 @dataclass(frozen=True)
@@ -230,7 +251,18 @@ class PermissionEngine:
             grant = self._create_grant(request, decision, now, expires_at)
             with self._vault_access() as vault:
                 vault.put_record(GRANT_RECORD_TYPE, grant.to_dict())
-        event = AgentAuditEvent(uuid.uuid4().hex, request.action_id, request.capability, request.target_scope, request.device_id, decision, request.risk, now.isoformat(), False)
+        event = AgentAuditEvent(
+            uuid.uuid4().hex,
+            request.action_id,
+            request.capability,
+            request.target_scope,
+            request.device_id,
+            decision,
+            request.risk,
+            now.isoformat(),
+            False,
+            dict(request.audit_metadata),
+        )
         if self._vault_session_manager.status().vault_state == "unlocked":
             with self._vault_access() as vault:
                 vault.put_record(AUDIT_RECORD_TYPE, event.to_dict())

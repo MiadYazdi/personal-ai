@@ -813,6 +813,7 @@ export default function App() {
       {agentPanelOpen && (
         <DeviceAgentPanel
           language={preferences.language}
+          thinkingMode={thinkingMode}
           onClose={() => setAgentPanelOpen(false)}
         />
       )}

@@ -9,7 +9,7 @@ import {
   type DeviceAgentPreview,
 } from "./api";
 import { ReadOnlyExecutorPanel } from "./ReadOnlyExecutorPanel";
-import type { AppLanguage } from "./types";
+import type { AppLanguage, ThinkingMode } from "./types";
 
 type Text = {
   title: string;
@@ -39,7 +39,7 @@ const text: Record<AppLanguage, Text> = {
 
 const capabilities: DeviceAgentCapability[] = ["read_metadata", "launch_app", "run_terminal", "write_file", "delete_file"];
 
-export function DeviceAgentPanel({ language, onClose }: { language: AppLanguage; onClose: () => void }) {
+export function DeviceAgentPanel({ language, thinkingMode, onClose }: { language: AppLanguage; thinkingMode: ThinkingMode; onClose: () => void }) {
   const t = text[language];
   const isPersian = language === "fa";
   const direction = language === "fa" || language === "ar" ? "rtl" : "ltr";
@@ -89,6 +89,6 @@ export function DeviceAgentPanel({ language, onClose }: { language: AppLanguage;
       <footer><button className="button" onClick={onClose} type="button">{t.close}</button></footer>
     </aside>
     </div>
-    {readOnlyOpen && <ReadOnlyExecutorPanel language={language} onClose={() => setReadOnlyOpen(false)} />}
+    {readOnlyOpen && <ReadOnlyExecutorPanel language={language} thinkingMode={thinkingMode} onClose={() => setReadOnlyOpen(false)} />}
   </>;
 }

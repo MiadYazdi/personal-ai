@@ -155,6 +155,16 @@ export type SavedConversationSummary = {
   message_count: number;
 };
 
+export type ModelShareAttachmentMetadata = {
+  attachment_id: string;
+  canonical_path: string;
+  size_bytes: number;
+  sha256: string;
+  sensitive: boolean;
+  chunk_count: number;
+  created_at: string;
+};
+
 export type SavedConversationMessage = {
   message_id: string;
   conversation_id: string;
@@ -162,6 +172,8 @@ export type SavedConversationMessage = {
   role: "user" | "assistant";
   content: string;
   created_at: string;
+  kind?: "text" | "model_share";
+  model_share?: ModelShareAttachmentMetadata | null;
 };
 
 export type SavedMemory = {
@@ -194,6 +206,16 @@ export function appendSavedConversationMessage(
   return requestJson(`/api/v1/conversations/${conversationId}/messages`, {
     method: "POST",
     body: JSON.stringify(message),
+  });
+}
+
+export function appendSavedConversationModelShare(
+  conversationId: string,
+  share: { canonical_path: string; content: string; size_bytes: number; sha256: string; sensitive: boolean },
+): Promise<SavedConversationMessage> {
+  return requestJson(`/api/v1/conversations/${conversationId}/model-shares`, {
+    method: "POST",
+    body: JSON.stringify(share),
   });
 }
 
@@ -315,4 +337,40 @@ export function previewReadOnlyPath(payload: { selected_scope: string; requested
 
 export function executeReadOnlyPath(payload: { selected_scope: string; requested_path: string; mode: "read_metadata" | "read_text"; confirmed: boolean; sensitive_confirmed?: boolean; share_with_model?: boolean; model_share_confirmed?: boolean }): Promise<ReadOnlyExecutionResult> {
   return requestJson("/api/v1/device-agent/read", { method: "POST", body: JSON.stringify(payload) });
+}
+
+
+export type ModelSharePlan = {
+  plan_id: string; operation_id: string; canonical_path: string; source_bytes: number;
+  content_sha256: string; sensitive: boolean; chunk_count: number;
+  chunks: { index: number; characters: number; bytes: number }[];
+  requires_sensitive_confirmation: boolean; large_share_warning: boolean;
+  storage: string; destination: string;
+};
+export type ModelShareStreamEvent = {
+  type: "progress" | "delta" | "done" | "cancelled" | "error";
+  content?: string; message?: string; completed?: number; total?: number; phase?: string;
+};
+export function previewModelShare(payload: { selected_scope: string; requested_path: string; content: string }): Promise<ModelSharePlan> {
+  return requestJson("/api/v1/device-agent/model-share/preview", { method: "POST", body: JSON.stringify(payload) });
+}
+export async function streamModelShare(
+  payload: { selected_scope: string; requested_path: string; content: string; plan_id: string; operation_id: string; confirmed: boolean; sensitive_confirmed: boolean; mode: ThinkingMode },
+  onEvent: (event: ModelShareStreamEvent) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/device-agent/model-share/stream`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), signal });
+  if (!response.ok || response.body === null) throw new Error(`Local model-share returned HTTP ${response.status}`);
+  const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = "";
+  const emit = (line: string) => { if (line.trim()) onEvent(JSON.parse(line) as ModelShareStreamEvent); };
+  while (true) {
+    const { done, value } = await reader.read();
+    if (value) buffer += decoder.decode(value, { stream: true });
+    let newline = buffer.indexOf("\n");
+    while (newline >= 0) { emit(buffer.slice(0, newline)); buffer = buffer.slice(newline + 1); newline = buffer.indexOf("\n"); }
+    if (done) { buffer += decoder.decode(); emit(buffer); return; }
+  }
+}
+export function cancelModelShare(operationId: string): Promise<{ cancelled: boolean }> {
+  return requestJson(`/api/v1/device-agent/model-share/cancel/${operationId}`, { method: "POST" });
 }

@@ -1138,3 +1138,11 @@ The Device Agent includes a compact localized Ubuntu read-only panel. The user e
 After a preview, the interface shows the canonical path, size, and any sensitivity warning. The user must activate a clear checkbox confirming that the read applies only to that exact previewed path, then choose the normal read button. A sensitive path additionally prompts for fresh one-time confirmation. Changing the path or mode clears the preview and its confirmation.
 
 The preview and read actions are full-width and centered within the panel, with intentional spacing from the mode control. Persian and Arabic use RTL layout while paths and technical values remain explicit LTR. Results are marked temporary, not saved to Vault or memory, and not automatically shared with the model.
+
+## Local Model Share UI Implementation v1
+
+After a confirmed read-text result, the Read-Only panel offers a separate local-model-share preparation action. The user sees a fixed plan with canonical path, byte size, chunk count, sensitivity warning, and large-job warning. A dedicated acknowledgement is required before processing starts; sensitive content also receives a fresh browser confirmation.
+
+While local processing runs, the panel shows progress and offers cancellation. Cancellation stops future chunks after the current local model operation completes. The result is sent to the conversation as a local assistant response.
+
+The shared raw content appears in the conversation as a collapsed, expandable card showing path, byte count, and chunk count. It is not a normal chat prompt message, so later ordinary chat requests do not silently include it. If the user explicitly saves the conversation while the Vault is unlocked, the card is persisted as an encrypted attachment; otherwise it remains browser-temporary.

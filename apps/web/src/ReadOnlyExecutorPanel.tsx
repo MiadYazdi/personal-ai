@@ -1,9 +1,13 @@
 import { useState, type FormEvent } from "react";
-import { AlertTriangle, Eye, FileText, LockKeyhole, X } from "lucide-react";
+import { AlertTriangle, Eye, FileText, LockKeyhole, Share2, Square, X } from "lucide-react";
 
 import {
+  cancelModelShare,
   executeReadOnlyPath,
+  previewModelShare,
   previewReadOnlyPath,
+  streamModelShare,
+  type ModelSharePlan,
   type ReadOnlyExecutionResult,
   type ReadOnlyPreview,
 } from "./api";
@@ -31,6 +35,15 @@ type Copy = {
   error: string;
   close: string;
   result: string;
+  prepareShare: string;
+  sharePlan: string;
+  shareConfirm: string;
+  shareRun: string;
+  shareRunning: string;
+  shareCancel: string;
+  shareProgress: string;
+  shareLargeWarning: string;
+  shareError: string;
 };
 
 const copy: Record<AppLanguage, Copy> = {
@@ -56,6 +69,15 @@ const copy: Record<AppLanguage, Copy> = {
     error: "پیش‌نمایش یا خواندن مسیر انجام نشد.",
     close: "بستن",
     result: "نتیجهٔ خواندن",
+    prepareShare: "آماده‌سازی اشتراک با مدل محلی",
+    sharePlan: "طرح اشتراک با مدل محلی",
+    shareConfirm: "می‌دانم فقط همین طرح ثابت با مدل محلی پردازش می‌شود.",
+    shareRun: "شروع پردازش محلی",
+    shareRunning: "پردازش محلی در حال انجام است…",
+    shareCancel: "لغو پردازش",
+    shareProgress: "پیشرفت",
+    shareLargeWarning: "این متن بزرگ است و پردازش کامل آن ممکن است زمان زیادی بگیرد.",
+    shareError: "طرح یا پردازش اشتراک با مدل انجام نشد.",
   },
   en: {
     title: "Read-only access",
@@ -79,6 +101,15 @@ const copy: Record<AppLanguage, Copy> = {
     error: "The path preview or read could not be completed.",
     close: "Close",
     result: "Read result",
+    prepareShare: "Prepare local model share",
+    sharePlan: "Local model-share plan",
+    shareConfirm: "I understand that only this fixed plan will be processed by the local model.",
+    shareRun: "Start local processing",
+    shareRunning: "Local processing is running…",
+    shareCancel: "Cancel processing",
+    shareProgress: "Progress",
+    shareLargeWarning: "This text is large; complete processing may take a long time.",
+    shareError: "The model-share plan or processing could not be completed.",
   },
   ar: {
     title: "وصول للقراءة فقط",
@@ -102,6 +133,15 @@ const copy: Record<AppLanguage, Copy> = {
     error: "تعذرت معاينة المسار أو قراءته.",
     close: "إغلاق",
     result: "نتيجة القراءة",
+    prepareShare: "إعداد مشاركة النموذج المحلي",
+    sharePlan: "خطة مشاركة النموذج المحلي",
+    shareConfirm: "أفهم أن هذه الخطة الثابتة فقط ستُعالج بواسطة النموذج المحلي.",
+    shareRun: "بدء المعالجة المحلية",
+    shareRunning: "المعالجة المحلية جارية…",
+    shareCancel: "إلغاء المعالجة",
+    shareProgress: "التقدم",
+    shareLargeWarning: "هذا النص كبير وقد تستغرق معالجته الكاملة وقتاً طويلاً.",
+    shareError: "تعذر إكمال خطة أو معالجة مشاركة النموذج.",
   },
   tr: {
     title: "Salt okunur erişim",
@@ -125,10 +165,19 @@ const copy: Record<AppLanguage, Copy> = {
     error: "Yol önizlemesi veya okuması tamamlanamadı.",
     close: "Kapat",
     result: "Okuma sonucu",
+    prepareShare: "Yerel model paylaşımını hazırla",
+    sharePlan: "Yerel model paylaşım planı",
+    shareConfirm: "Yalnızca bu sabit planın yerel model tarafından işleneceğini anlıyorum.",
+    shareRun: "Yerel işlemeyi başlat",
+    shareRunning: "Yerel işleme sürüyor…",
+    shareCancel: "İşlemeyi iptal et",
+    shareProgress: "İlerleme",
+    shareLargeWarning: "Bu metin büyük; tam işleme uzun sürebilir.",
+    shareError: "Model paylaşım planı veya işlemesi tamamlanamadı.",
   },
 };
 
-export function ReadOnlyExecutorPanel({ language, onClose }: { language: AppLanguage; onClose: () => void }) {
+export function ReadOnlyExecutorPanel({ language, thinkingMode, onClose }: { language: AppLanguage; thinkingMode: "quick" | "deep"; onClose: () => void }) {
   const t = copy[language];
   const direction = language === "fa" || language === "ar" ? "rtl" : "ltr";
   const [path, setPath] = useState("");
@@ -139,12 +188,22 @@ export function ReadOnlyExecutorPanel({ language, onClose }: { language: AppLang
   const [confirmed, setConfirmed] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isReading, setIsReading] = useState(false);
+  const [sharePlan, setSharePlan] = useState<ModelSharePlan | null>(null);
+  const [shareConfirmed, setShareConfirmed] = useState(false);
+  const [shareRunning, setShareRunning] = useState(false);
+  const [shareProgress, setShareProgress] = useState<{ completed: number; total: number; phase: string } | null>(null);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [shareController, setShareController] = useState<AbortController | null>(null);
 
   const resetForNewRequest = () => {
     setPreview(null);
     setResult(null);
     setError(null);
     setConfirmed(false);
+    setSharePlan(null);
+    setShareConfirmed(false);
+    setShareProgress(null);
+    setShareError(null);
   };
 
   const previewPath = async () => {
@@ -190,6 +249,45 @@ export function ReadOnlyExecutorPanel({ language, onClose }: { language: AppLang
     } finally {
       setIsReading(false);
     }
+  };
+
+  const prepareShare = async () => {
+    if (!result?.content || !preview || shareRunning) return;
+    try {
+      setSharePlan(await previewModelShare({ selected_scope: path, requested_path: path, content: result.content }));
+      setShareConfirmed(false);
+      setShareError(null);
+    } catch { setSharePlan(null); setShareError(t.shareError); }
+  };
+
+  const runShare = async () => {
+    if (!result?.content || !preview || !sharePlan || !shareConfirmed || shareRunning) return;
+    if (sharePlan.requires_sensitive_confirmation && !window.confirm(t.sensitiveDialog)) return;
+    const controller = new AbortController();
+    setShareController(controller);
+    setShareRunning(true);
+    setShareError(null);
+    let finalContent = "";
+    window.dispatchEvent(new CustomEvent("personal-ai:model-share", { detail: { type: "start", share: { canonical_path: sharePlan.canonical_path, content: result.content, size_bytes: sharePlan.source_bytes, sha256: sharePlan.content_sha256, sensitive: sharePlan.sensitive, chunk_count: sharePlan.chunk_count } } }));
+    try {
+      await streamModelShare({ selected_scope: path, requested_path: path, content: result.content, plan_id: sharePlan.plan_id, operation_id: sharePlan.operation_id, confirmed: true, sensitive_confirmed: sharePlan.requires_sensitive_confirmation, mode: thinkingMode }, (event) => {
+        if (event.type === "progress" && event.total) setShareProgress({ completed: event.completed ?? 0, total: event.total, phase: event.phase ?? "chunks" });
+        if (event.type === "delta" && event.content) finalContent += event.content;
+        if (event.type === "error") setShareError(event.message || t.shareError);
+        if (event.type === "cancelled") setShareError(event.message || t.shareError);
+      }, controller.signal);
+      if (finalContent.trim()) window.dispatchEvent(new CustomEvent("personal-ai:model-share", { detail: { type: "complete", content: finalContent } }));
+    } catch (caught) {
+      if (!(caught instanceof DOMException && caught.name === "AbortError")) setShareError(t.shareError);
+    } finally { setShareController(null); setShareRunning(false); }
+  };
+
+  const cancelShare = () => {
+    if (!sharePlan) return;
+    shareController?.abort();
+    void cancelModelShare(sharePlan.operation_id);
+    window.dispatchEvent(new CustomEvent("personal-ai:model-share", { detail: { type: "cancelled" } }));
+    setShareRunning(false);
   };
 
   return <div className="readonly-layer" dir={direction}>
@@ -246,7 +344,18 @@ export function ReadOnlyExecutorPanel({ language, onClose }: { language: AppLang
           {result.content !== undefined && <>
             <pre dir="auto">{result.content}</pre>
             <p className="readonly-muted">{t.contentTemporary}</p>
-            <p className="readonly-muted">{t.modelSeparate}</p>
+            {!sharePlan && <button className="button" disabled={shareRunning} onClick={() => void prepareShare()} type="button"><Share2 size={16} />{t.prepareShare}</button>}
+            {sharePlan && <section className="readonly-share-plan">
+              <strong>{t.sharePlan}</strong>
+              <p><bdi dir="ltr">{sharePlan.canonical_path}</bdi></p>
+              <p>{t.size}: <bdi dir="ltr">{sharePlan.source_bytes}</bdi> {language === "fa" ? "بایت" : language === "ar" ? "بايت" : language === "tr" ? "bayt" : "bytes"}</p>
+              <p>{t.shareProgress}: <bdi dir="ltr">{sharePlan.chunk_count}</bdi> chunks</p>
+              {sharePlan.large_share_warning && <p className="readonly-warning"><AlertTriangle size={16} />{t.shareLargeWarning}</p>}
+              <label className="readonly-confirm"><input checked={shareConfirmed} disabled={shareRunning} onChange={(event) => setShareConfirmed(event.target.checked)} type="checkbox" /><span>{t.shareConfirm}</span></label>
+              {shareProgress && <p className="readonly-muted">{t.shareProgress}: <bdi dir="ltr">{shareProgress.completed}/{shareProgress.total}</bdi> · <bdi dir="ltr">{shareProgress.phase}</bdi></p>}
+              {shareRunning ? <button className="button" onClick={cancelShare} type="button"><Square size={16} />{t.shareCancel}</button> : <button className="button primary" disabled={!shareConfirmed} onClick={() => void runShare()} type="button"><Share2 size={16} />{t.shareRun}</button>}
+            </section>}
+            {shareError && <p className="readonly-error">{shareError}</p>}
           </>}
         </section>}
         {error && <p className="readonly-error">{error}</p>}

@@ -15,6 +15,7 @@ import {
 
 import {
   appendSavedConversationMessage,
+  appendSavedConversationModelShare,
   createSavedConversation,
   createSavedMemory,
   deleteAllSavedConversations,
@@ -27,6 +28,7 @@ import {
   listSavedMemories,
   streamLocalChat,
   type LocalChatMessage,
+  type ModelShareAttachmentMetadata,
   type SavedConversationSummary,
   type SavedMemory,
 } from "./api";
@@ -71,6 +73,10 @@ type CopyText = {
   changedNotSaved: string;
   lockCleared: string;
   defaultTitle: string;
+  modelShare: string;
+  modelShareShow: string;
+  modelShareHide: string;
+  modelShareSaved: string;
 };
 
 const copy: Record<AppLanguage, CopyText> = {
@@ -113,6 +119,10 @@ const copy: Record<AppLanguage, CopyText> = {
     changedNotSaved: "تغییر جدید موقت است؛ نسخهٔ ذخیره‌شده در خزانه تغییر نکرد.",
     lockCleared: "Vault قفل شد؛ تاریخچهٔ ذخیره‌شده از صفحه پاک شد.",
     defaultTitle: "گفت‌وگوی ذخیره‌شده",
+    modelShare: "محتوای اشتراکی با مدل محلی",
+    modelShareShow: "نمایش متن کامل",
+    modelShareHide: "بستن متن کامل",
+    modelShareSaved: "محتوای اشتراکی در Vault ذخیره شد.",
   },
   en: {
     emptyTitle: "Ready to chat",
@@ -153,6 +163,10 @@ const copy: Record<AppLanguage, CopyText> = {
     changedNotSaved: "This new change is temporary; the saved Vault version was not changed.",
     lockCleared: "The Vault locked, so the saved conversation was cleared from this page.",
     defaultTitle: "Saved conversation",
+    modelShare: "Local model-shared content",
+    modelShareShow: "Show full text",
+    modelShareHide: "Hide full text",
+    modelShareSaved: "Shared content was saved in Vault.",
   },
   ar: {
     emptyTitle: "جاهز للمحادثة",
@@ -193,6 +207,10 @@ const copy: Record<AppLanguage, CopyText> = {
     changedNotSaved: "هذا التغيير مؤقت؛ النسخة المحفوظة في الخزنة لم تتغير.",
     lockCleared: "تم قفل الخزنة، لذا تم مسح المحادثة المحفوظة من الصفحة.",
     defaultTitle: "محادثة محفوظة",
+    modelShare: "محتوى مشترك مع النموذج المحلي",
+    modelShareShow: "إظهار النص الكامل",
+    modelShareHide: "إخفاء النص الكامل",
+    modelShareSaved: "تم حفظ المحتوى المشترك في الخزنة.",
   },
   tr: {
     emptyTitle: "Sohbete hazır",
@@ -233,12 +251,32 @@ const copy: Record<AppLanguage, CopyText> = {
     changedNotSaved: "Bu değişiklik geçicidir; Kasadaki kayıtlı sürüm değişmedi.",
     lockCleared: "Kasa kilitlendiği için kayıtlı sohbet bu sayfadan temizlendi.",
     defaultTitle: "Kaydedilen sohbet",
+    modelShare: "Yerel modelle paylaşılan içerik",
+    modelShareShow: "Tam metni göster",
+    modelShareHide: "Tam metni gizle",
+    modelShareSaved: "Paylaşılan içerik Kasaya kaydedildi.",
   },
 };
+
+type ModelShareDisplay = {
+  canonical_path: string;
+  content: string;
+  size_bytes: number;
+  sha256: string;
+  sensitive: boolean;
+  chunk_count: number;
+  metadata?: ModelShareAttachmentMetadata | null;
+};
+
+type ModelShareBrowserEvent =
+  | { type: "start"; share: ModelShareDisplay }
+  | { type: "complete"; content: string }
+  | { type: "cancelled" };
 
 export function ChatComposer({ language, mode }: { language: AppLanguage; mode: ThinkingMode }) {
   const t = copy[language];
   const [messages, setMessages] = useState<LocalChatMessage[]>([]);
+  const [modelShares, setModelShares] = useState<ModelShareDisplay[]>([]);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -253,6 +291,28 @@ export function ChatComposer({ language, mode }: { language: AppLanguage; mode: 
   const [storageWorking, setStorageWorking] = useState(false);
   const controllerRef = useRef<AbortController | null>(null);
   const uiDirection = language === "fa" || language === "ar" ? "rtl" : "ltr";
+
+  useEffect(() => {
+    const receive = (event: Event) => {
+      const detail = (event as CustomEvent<ModelShareBrowserEvent>).detail;
+      if (!detail) return;
+      if (detail.type === "start") {
+        setModelShares((current) => [...current, detail.share]);
+        if (savedConversationId) {
+          void appendSavedConversationModelShare(savedConversationId, detail.share)
+            .then(() => setNotice(t.modelShareSaved))
+            .catch(() => setNotice(t.storageError));
+        }
+      }
+      if (detail.type === "complete" && detail.content.trim()) {
+        const assistant = { role: "assistant" as const, content: detail.content };
+        setMessages((current) => [...current, assistant]);
+        if (savedConversationId) void persistMessage(savedConversationId, assistant);
+      }
+    };
+    window.addEventListener("personal-ai:model-share", receive);
+    return () => window.removeEventListener("personal-ai:model-share", receive);
+  }, [savedConversationId, t.modelShareSaved, t.storageError]);
 
   useEffect(() => {
     if (!savedConversationId) return;
@@ -343,7 +403,7 @@ export function ChatComposer({ language, mode }: { language: AppLanguage; mode: 
     void beginStream(transcript.slice(-16), transcript, null);
   };
   const copyMessage = async (index: number) => { try { await navigator.clipboard.writeText(messages[index].content); setCopiedIndex(index); } catch { setCopiedIndex(null); } };
-  const clear = () => { if (!sending) { setMessages([]); setDraft(""); setEditingIndex(null); setCopiedIndex(null); setSavedConversationId(null); setError(null); } };
+  const clear = () => { if (!sending) { setMessages([]); setModelShares([]); setDraft(""); setEditingIndex(null); setCopiedIndex(null); setSavedConversationId(null); setError(null); } };
 
   const saveConversation = async () => {
     if (!messages.length || sending) return;
@@ -352,6 +412,7 @@ export function ChatComposer({ language, mode }: { language: AppLanguage; mode: 
       const firstUser = messages.find((message) => message.role === "user" && message.content.trim());
       const created = await createSavedConversation(firstUser ? firstUser.content.slice(0, 80) : t.defaultTitle);
       for (const message of messages) if (message.content.trim()) await appendSavedConversationMessage(created.conversation_id, message);
+      for (const share of modelShares) await appendSavedConversationModelShare(created.conversation_id, share);
       setSavedConversationId(created.conversation_id);
       setSaveConfirmOpen(false);
       setNotice(t.savedLocal);
@@ -379,7 +440,19 @@ export function ChatComposer({ language, mode }: { language: AppLanguage; mode: 
   const openSavedConversation = async (conversationId: string) => {
     try {
       const result = await getSavedConversation(conversationId);
-      setMessages(result.messages.map(({ role, content }) => ({ role, content })));
+      const shares = result.messages
+        .filter((message) => message.kind === "model_share" && message.model_share)
+        .map((message) => ({
+          canonical_path: message.model_share?.canonical_path ?? "",
+          content: message.content,
+          size_bytes: message.model_share?.size_bytes ?? 0,
+          sha256: message.model_share?.sha256 ?? "",
+          sensitive: Boolean(message.model_share?.sensitive),
+          chunk_count: message.model_share?.chunk_count ?? 0,
+          metadata: message.model_share,
+        }));
+      setMessages(result.messages.filter((message) => message.kind !== "model_share").map(({ role, content }) => ({ role, content })));
+      setModelShares(shares);
       setSavedConversationId(conversationId);
       setSavedPanelOpen(false);
       setNotice(t.savedLocal);
@@ -397,7 +470,10 @@ export function ChatComposer({ language, mode }: { language: AppLanguage; mode: 
 
   return <>
     <div className="chat-transcript" aria-live="polite">
-      {messages.length === 0 ? <div className="workspace-empty localized-ui-text" dir={uiDirection}><div className="empty-icon"><Sparkles size={36} /></div><h3>{t.emptyTitle}</h3><p>{t.emptySubtitle}</p></div> : messages.map((message, index) => <article className={`chat-message ${message.role}`} key={`${message.role}-${index}`}><span>{message.role === "user" ? t.you : t.assistant}</span><p dir="auto">{message.content || (sending ? t.sending : "")}</p><div className="chat-message-actions" dir={uiDirection}><button onClick={() => void copyMessage(index)} type="button"><Copy size={14} />{copiedIndex === index ? t.copied : t.copy}</button><button disabled={sending || !message.content} onClick={() => void saveMemory(index)} type="button"><BookmarkPlus size={14} />{t.saveMemory}</button>{message.role === "user" ? <button disabled={sending} onClick={() => edit(index)} type="button"><Pencil size={14} />{t.edit}</button> : <button disabled={sending || index === 0} onClick={() => regenerate(index)} type="button"><RefreshCw size={14} />{t.regenerate}</button>}</div></article>)}
+      {messages.length === 0 && modelShares.length === 0 ? <div className="workspace-empty localized-ui-text" dir={uiDirection}><div className="empty-icon"><Sparkles size={36} /></div><h3>{t.emptyTitle}</h3><p>{t.emptySubtitle}</p></div> : <>
+        {modelShares.map((share, index) => <article className="chat-message model-share-message" key={`model-share-${share.sha256}-${index}`}><span>{t.modelShare}</span><p><bdi dir="ltr">{share.canonical_path}</bdi></p><p><bdi dir="ltr">{share.size_bytes}</bdi> bytes · <bdi dir="ltr">{share.chunk_count}</bdi> chunks</p><details><summary>{t.modelShareShow}</summary><pre dir="auto">{share.content}</pre></details></article>)}
+        {messages.map((message, index) => <article className={`chat-message ${message.role}`} key={`${message.role}-${index}`}><span>{message.role === "user" ? t.you : t.assistant}</span><p dir="auto">{message.content || (sending ? t.sending : "")}</p><div className="chat-message-actions" dir={uiDirection}><button onClick={() => void copyMessage(index)} type="button"><Copy size={14} />{copiedIndex === index ? t.copied : t.copy}</button><button disabled={sending || !message.content} onClick={() => void saveMemory(index)} type="button"><BookmarkPlus size={14} />{t.saveMemory}</button>{message.role === "user" ? <button disabled={sending} onClick={() => edit(index)} type="button"><Pencil size={14} />{t.edit}</button> : <button disabled={sending || index === 0} onClick={() => regenerate(index)} type="button"><RefreshCw size={14} />{t.regenerate}</button>}</div></article>)}
+      </>}
     </div>
 
     <form className="composer-placeholder chat-composer" dir={uiDirection} onSubmit={(event) => void submit(event)}>

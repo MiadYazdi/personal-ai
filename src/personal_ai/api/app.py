@@ -23,6 +23,7 @@ from personal_ai.agent.readonly_executor import (
     ReadOnlyExecutorError,
     UbuntuReadOnlyExecutor,
 )
+from personal_ai.model_share import LocalModelShareService, ModelShareError
 from personal_ai.conversation_memory import (
     ConversationMemoryLockedError,
     ConversationMemoryNotFoundError,
@@ -111,6 +112,14 @@ class ConversationMessageCreateRequest(BaseModel):
     content: str
 
 
+class ConversationModelShareCreateRequest(BaseModel):
+    canonical_path: str
+    content: str
+    size_bytes: int
+    sha256: str
+    sensitive: bool = False
+
+
 class MemoryCreateRequest(BaseModel):
     content: str
 
@@ -133,6 +142,20 @@ class ReadOnlyPreviewRequest(BaseModel):
     selected_scope: str
     requested_path: str
     mode: Literal["read_metadata", "read_text"]
+
+
+class ModelSharePreviewRequest(BaseModel):
+    selected_scope: str
+    requested_path: str
+    content: str
+
+
+class ModelShareStreamRequest(ModelSharePreviewRequest):
+    plan_id: str
+    operation_id: str
+    confirmed: bool = False
+    sensitive_confirmed: bool = False
+    mode: Literal["quick", "deep"] = "quick"
 
 
 class ReadOnlyExecuteRequest(ReadOnlyPreviewRequest):
@@ -210,6 +233,9 @@ def create_app(
     permission_engine = PermissionEngine(vault_session_manager)
     capability_adapter = UbuntuReadOnlyCapabilityAdapter()
     read_only_executor = UbuntuReadOnlyExecutor()
+    model_share_service = LocalModelShareService(
+        active_chat_runtime, read_only_executor, permission_engine
+    )
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -232,6 +258,7 @@ def create_app(
     app.state.permission_engine = permission_engine
     app.state.capability_adapter = capability_adapter
     app.state.read_only_executor = read_only_executor
+    app.state.model_share_service = model_share_service
 
     app.add_middleware(
         CORSMiddleware,
@@ -441,6 +468,23 @@ def create_app(
         except (ConversationMemoryLockedError, ConversationMemoryNotFoundError, ConversationMemoryValidationError) as error:
             raise conversation_error(error) from error
 
+    @app.post("/api/v1/conversations/{conversation_id}/model-shares")
+    def append_conversation_model_share(
+        conversation_id: str,
+        request: ConversationModelShareCreateRequest,
+    ) -> dict[str, object]:
+        try:
+            return conversation_memory_service.append_model_share(
+                conversation_id,
+                canonical_path=request.canonical_path,
+                content=request.content,
+                size_bytes=request.size_bytes,
+                sha256=request.sha256,
+                sensitive=request.sensitive,
+            ).to_dict()
+        except (ConversationMemoryLockedError, ConversationMemoryNotFoundError, ConversationMemoryValidationError) as error:
+            raise conversation_error(error) from error
+
     @app.delete("/api/v1/conversations/{conversation_id}")
     def delete_conversation(conversation_id: str) -> dict[str, bool]:
         try:
@@ -588,6 +632,45 @@ def create_app(
             raise HTTPException(status_code=422, detail=str(error)) from error
         except Exception as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @app.post("/api/v1/device-agent/model-share/preview")
+    def preview_model_share(request: ModelSharePreviewRequest) -> dict[str, object]:
+        try:
+            return model_share_service.preview(
+                selected_scope=request.selected_scope,
+                requested_path=request.requested_path,
+                content=request.content,
+            ).to_dict()
+        except ModelShareError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @app.post("/api/v1/device-agent/model-share/stream")
+    def stream_model_share(request: ModelShareStreamRequest) -> StreamingResponse:
+        def encode_events():
+            try:
+                for event in model_share_service.stream(
+                    selected_scope=request.selected_scope,
+                    requested_path=request.requested_path,
+                    content=request.content,
+                    plan_id=request.plan_id,
+                    operation_id=request.operation_id,
+                    confirmed=request.confirmed,
+                    sensitive_confirmed=request.sensitive_confirmed,
+                    mode=request.mode,
+                ):
+                    yield json.dumps(event.to_dict(), ensure_ascii=False, separators=(",", ":")) + "\n"
+            except ModelShareError as error:
+                yield json.dumps({"type": "error", "message": str(error)}, ensure_ascii=False) + "\n"
+
+        return StreamingResponse(
+            encode_events(),
+            media_type="application/x-ndjson",
+            headers={"Cache-Control": "no-store"},
+        )
+
+    @app.post("/api/v1/device-agent/model-share/cancel/{operation_id}")
+    def cancel_model_share(operation_id: str) -> dict[str, bool]:
+        return {"cancelled": model_share_service.cancel(operation_id)}
 
     return app
 

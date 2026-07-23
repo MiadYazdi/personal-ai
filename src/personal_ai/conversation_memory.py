@@ -13,10 +13,14 @@ CONVERSATION_CATALOG_TYPE = "conversation_catalog"
 CONVERSATION_MESSAGE_TYPE = "conversation_message"
 MEMORY_CATALOG_TYPE = "memory_catalog"
 MEMORY_TYPE = "memory"
+CONVERSATION_ATTACHMENT_TYPE = "conversation_attachment"
+CONVERSATION_ATTACHMENT_CHUNK_TYPE = "conversation_attachment_chunk"
 
 MAX_TITLE_CHARACTERS = 200
 MAX_MESSAGE_CHARACTERS = 8_000
 MAX_MEMORY_CHARACTERS = 4_000
+MAX_MODEL_SHARE_ATTACHMENT_BYTES = 1 * 1024 * 1024
+MODEL_SHARE_ATTACHMENT_CHUNK_CHARACTERS = 6_000
 
 
 class ConversationMemoryError(Exception):
@@ -61,6 +65,8 @@ class ConversationMessage:
     role: str
     content: str
     created_at: str
+    kind: str = "text"
+    model_share: dict[str, object] | None = None
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -70,6 +76,8 @@ class ConversationMessage:
             "role": self.role,
             "content": self.content,
             "created_at": self.created_at,
+            "kind": self.kind,
+            "model_share": self.model_share,
         }
 
 
@@ -152,6 +160,83 @@ class ConversationMemoryService:
             self._save_catalog(vault, catalog_record, CONVERSATION_CATALOG_TYPE, entries)
             return message
 
+    def append_model_share(
+        self,
+        conversation_id: str,
+        *,
+        canonical_path: str,
+        content: str,
+        size_bytes: int,
+        sha256: str,
+        sensitive: bool,
+    ) -> ConversationMessage:
+        """Persist an explicitly saved model-share attachment in encrypted chunks."""
+        self._require_id(conversation_id, "Conversation")
+        path = self._require_text(canonical_path, "Canonical path", 4_000)
+        attachment_content = self._require_model_share_content(content)
+        actual_size = len(attachment_content.encode("utf-8"))
+        if size_bytes != actual_size:
+            raise ConversationMemoryValidationError("Model-share size does not match content.")
+        expected_sha256 = self._require_text(sha256, "Model-share digest", 128)
+        actual_sha256 = __import__("hashlib").sha256(
+            attachment_content.encode("utf-8")
+        ).hexdigest()
+        if expected_sha256 != actual_sha256:
+            raise ConversationMemoryValidationError("Model-share digest does not match content.")
+
+        with self._vault_access() as vault:
+            catalog_record, catalog = self._catalog(vault, CONVERSATION_CATALOG_TYPE)
+            summary = self._find_conversation(catalog, conversation_id)
+            existing = self._conversation_messages(vault, conversation_id)
+            timestamp = self._now()
+            attachment_id = uuid.uuid4().hex
+            message_id = uuid.uuid4().hex
+            chunk_record_ids: list[str] = []
+            for index, chunk in enumerate(self._split_model_share_content(attachment_content)):
+                chunk_record_ids.append(vault.put_record(
+                    CONVERSATION_ATTACHMENT_CHUNK_TYPE,
+                    {
+                        "attachment_id": attachment_id,
+                        "index": index,
+                        "content": chunk,
+                    },
+                ))
+
+            metadata: dict[str, object] = {
+                "attachment_id": attachment_id,
+                "canonical_path": path,
+                "size_bytes": actual_size,
+                "sha256": actual_sha256,
+                "sensitive": bool(sensitive),
+                "chunk_count": len(chunk_record_ids),
+                "created_at": timestamp,
+            }
+            vault.put_record(
+                CONVERSATION_ATTACHMENT_TYPE,
+                {
+                    **metadata,
+                    "conversation_id": conversation_id,
+                    "message_id": message_id,
+                    "chunk_record_ids": chunk_record_ids,
+                },
+            )
+            stored = ConversationMessage(
+                message_id=message_id,
+                conversation_id=conversation_id,
+                sequence=len(existing),
+                role="user",
+                content="[Local model-share attachment]",
+                created_at=timestamp,
+                kind="model_share",
+            )
+            vault.put_record(CONVERSATION_MESSAGE_TYPE, stored.to_dict())
+            self._increment_conversation_message_count(
+                vault, catalog_record, catalog, summary, timestamp
+            )
+            return ConversationMessage(
+                **{**stored.__dict__, "content": attachment_content, "model_share": metadata}
+            )
+
     def delete_conversation(self, conversation_id: str) -> None:
         self._require_id(conversation_id, "Conversation")
         with self._vault_access() as vault:
@@ -159,6 +244,7 @@ class ConversationMemoryService:
             self._find_conversation(catalog, conversation_id)
             for message in self._conversation_messages(vault, conversation_id):
                 vault.delete_record(message.message_id)
+            self._delete_model_share_attachments(vault, conversation_id)
             entries = [
                 entry
                 for entry in self._catalog_entries(catalog)
@@ -173,6 +259,7 @@ class ConversationMemoryService:
             for entry in entries:
                 for message in self._conversation_messages(vault, entry["conversation_id"]):
                     vault.delete_record(message.message_id)
+                self._delete_model_share_attachments(vault, entry["conversation_id"])
             self._save_catalog(vault, catalog_record, CONVERSATION_CATALOG_TYPE, [])
             return len(entries)
 
@@ -283,23 +370,114 @@ class ConversationMemoryService:
         raise ConversationMemoryNotFoundError("Conversation does not exist.")
 
     def _conversation_messages(self, vault: VaultStore, conversation_id: str) -> list[ConversationMessage]:
+        attachments = self._model_share_attachments(vault, conversation_id)
         messages: list[ConversationMessage] = []
         for record in vault.find_records_by_type(CONVERSATION_MESSAGE_TYPE):
             payload = record.payload
             if payload.get("conversation_id") != conversation_id:
                 continue
             try:
+                kind = str(payload.get("kind", "text"))
+                message_id = str(payload["message_id"])
+                content = str(payload["content"])
+                model_share = None
+                if kind == "model_share":
+                    attachment = attachments.get(message_id)
+                    if attachment is None:
+                        raise ConversationMemoryValidationError("Model-share attachment is unavailable.")
+                    content, model_share = self._read_model_share_attachment(vault, attachment)
                 messages.append(ConversationMessage(
-                    message_id=payload["message_id"],
-                    conversation_id=payload["conversation_id"],
+                    message_id=message_id,
+                    conversation_id=str(payload["conversation_id"]),
                     sequence=int(payload["sequence"]),
-                    role=payload["role"],
-                    content=payload["content"],
-                    created_at=payload["created_at"],
+                    role=str(payload["role"]),
+                    content=content,
+                    created_at=str(payload["created_at"]),
+                    kind=kind,
+                    model_share=model_share,
                 ))
             except (KeyError, TypeError, ValueError) as error:
                 raise ConversationMemoryValidationError("Encrypted conversation message is invalid.") from error
         return sorted(messages, key=lambda message: message.sequence)
+
+    def _increment_conversation_message_count(
+        self,
+        vault: VaultStore,
+        catalog_record: VaultRecord | None,
+        catalog: dict[str, object],
+        summary: ConversationSummary,
+        timestamp: str,
+    ) -> None:
+        entries = self._catalog_entries(catalog)
+        for entry in entries:
+            if entry["conversation_id"] == summary.conversation_id:
+                entry["updated_at"] = timestamp
+                entry["message_count"] = summary.message_count + 1
+                break
+        self._save_catalog(vault, catalog_record, CONVERSATION_CATALOG_TYPE, entries)
+
+    def _model_share_attachments(
+        self, vault: VaultStore, conversation_id: str
+    ) -> dict[str, dict[str, object]]:
+        attachments: dict[str, dict[str, object]] = {}
+        for record in vault.find_records_by_type(CONVERSATION_ATTACHMENT_TYPE):
+            payload = record.payload
+            if payload.get("conversation_id") == conversation_id:
+                payload = dict(payload)
+                payload["record_id"] = record.record_id
+                message_id = payload.get("message_id")
+                if isinstance(message_id, str):
+                    attachments[message_id] = payload
+        return attachments
+
+    def _read_model_share_attachment(
+        self, vault: VaultStore, attachment: dict[str, object]
+    ) -> tuple[str, dict[str, object]]:
+        chunk_record_ids = attachment.get("chunk_record_ids")
+        if not isinstance(chunk_record_ids, list) or not chunk_record_ids:
+            raise ConversationMemoryValidationError("Model-share attachment chunks are invalid.")
+        chunks: list[tuple[int, str]] = []
+        for record_id in chunk_record_ids:
+            record = vault.get_record(str(record_id))
+            payload = record.payload
+            chunks.append((int(payload["index"]), str(payload["content"])))
+        content = "".join(chunk for _, chunk in sorted(chunks))
+        metadata = {
+            key: attachment[key]
+            for key in ("attachment_id", "canonical_path", "size_bytes", "sha256", "sensitive", "chunk_count", "created_at")
+            if key in attachment
+        }
+        actual_size = len(content.encode("utf-8"))
+        if actual_size != metadata.get("size_bytes"):
+            raise ConversationMemoryValidationError("Model-share attachment size is invalid.")
+        actual_sha256 = __import__("hashlib").sha256(content.encode("utf-8")).hexdigest()
+        if actual_sha256 != metadata.get("sha256"):
+            raise ConversationMemoryValidationError("Model-share attachment digest is invalid.")
+        return content, metadata
+
+    def _delete_model_share_attachments(self, vault: VaultStore, conversation_id: str) -> None:
+        for record in vault.find_records_by_type(CONVERSATION_ATTACHMENT_TYPE):
+            payload = record.payload
+            if payload.get("conversation_id") != conversation_id:
+                continue
+            for chunk_record_id in payload.get("chunk_record_ids", []):
+                vault.delete_record(str(chunk_record_id))
+            vault.delete_record(record.record_id)
+
+    @staticmethod
+    def _split_model_share_content(content: str) -> list[str]:
+        return [
+            content[index:index + MODEL_SHARE_ATTACHMENT_CHUNK_CHARACTERS]
+            for index in range(0, len(content), MODEL_SHARE_ATTACHMENT_CHUNK_CHARACTERS)
+        ]
+
+    @staticmethod
+    def _require_model_share_content(value: str) -> str:
+        if not isinstance(value, str) or not value:
+            raise ConversationMemoryValidationError("Model-share content cannot be empty.")
+        if len(value.encode("utf-8")) > MAX_MODEL_SHARE_ATTACHMENT_BYTES:
+            raise ConversationMemoryValidationError("Model-share content exceeds the 1 MiB limit.")
+        return value
 
     @staticmethod
     def _now() -> str:

@@ -2924,3 +2924,13 @@ textarea::placeholder { text-align: inherit; }
   justify-content: center;
   margin-top: 0.75rem;
 }
+
+
+/* Local Model Share UI v1 */
+.readonly-share-plan { display: grid; gap: 9px; border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--border)); border-radius: 12px; padding: 12px; background: var(--surface); }
+.readonly-share-plan strong, .readonly-share-plan p { margin: 0; color: var(--text); }
+.readonly-share-plan p { font-size: .78em; line-height: 1.55; }
+.model-share-message { width: min(92%, 900px); border-color: color-mix(in srgb, var(--accent) 38%, var(--border)); }
+.model-share-message details { margin-top: 9px; }
+.model-share-message summary { color: var(--accent); cursor: pointer; font-size: .76em; font-weight: 700; }
+.model-share-message pre { max-height: 320px; overflow: auto; margin: 9px 0 0; border: 1px solid var(--border); border-radius: 9px; padding: 10px; background: var(--surface); color: var(--text); white-space: pre-wrap; }

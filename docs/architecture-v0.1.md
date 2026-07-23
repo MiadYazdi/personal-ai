@@ -1977,3 +1977,13 @@ The canonical home worktree was prepared and verified on Ubuntu 26.04. Its runti
 Python dependencies are installed in a project-local, Git-ignored `.venv` using Python 3.12 and `requirements/python.lock.txt`. The transferred virtual environment was incomplete and was rebuilt only after explicit confirmation. Frontend dependencies are installed in Git-ignored `apps/web/node_modules` from `package-lock.json`; the transferred dependency directory was also rebuilt after its required local executables were found missing.
 
 Verification on the home system succeeded: the Vite production build completed and all 59 synthetic Python tests passed. The verification did not start the application services, load the GGUF model, or unlock the personal Vault. Model weights, Vault data, local preferences, `.venv`, `node_modules`, and build output remain outside Git.
+
+## Local Model Share Implementation v1
+
+The model-share path is a separate local-only flow from read-only file access. A user-confirmed text read can request a model-share plan containing the canonical path, UTF-8 byte size, SHA-256 digest, sensitivity state, chunk count, and warning for large jobs. Planning does not load or invoke Qwen.
+
+`POST /api/v1/device-agent/model-share/preview` creates the fixed plan. `POST /api/v1/device-agent/model-share/stream` requires that exact plan digest, explicit confirmation, and a fresh sensitive-content confirmation where applicable. It processes the complete selected text in conservative chunks, emits local progress events, supports cancellation between model operations, and hierarchically reduces chunk notes before the final response so the 2048-token model context is not overfilled.
+
+Model-share audit metadata contains only canonical path, byte count, digest, chunk count, and operation identifier. Raw document content is never written to audit records. The permission decision is one-time and uses the existing safe read-text policy; no persistent grant is created.
+
+A saved conversation may contain an explicitly saved model-share attachment. Raw text is split into encrypted Vault attachment chunks; normal conversation messages store only attachment references and metadata. Attachments are returned as a reconstructed collapsed chat item only when the Vault is unlocked, and are removed with their conversation. The ordinary 8,000-character chat-message limit remains unchanged.

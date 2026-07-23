@@ -1150,3 +1150,11 @@ The shared raw content appears in the conversation as a collapsed, expandable ca
 ## Local Model Share Synthetic UI Verification v1
 
 The home-browser verification confirmed the Read-Only text result, local model-share plan, one-time confirmation, and Chat card flow using the synthetic `/tmp` file only. The chat card displays localized byte and chunk labels, an expandable raw-text view, and the final local assistant response. No personal file or Vault content was used.
+
+## Unified User-Controlled Executors UI Design v1
+
+The executor UI uses one consistent confirmation surface for Launch, Terminal, and Write File. Each surface presents the exact target, effect, risk, and action-specific details before a fresh confirmation. No bulk execution UI is provided.
+
+Launch shows desktop entry identity, resolved Exec preview, digest, and the warning that the launched application has its own OS permissions. Terminal shows argv as isolated LTR tokens, canonical cwd, timeout, expected effect, and bounded local-output policy. Write shows canonical path, create/overwrite state, sizes, hashes, and a readable diff or precise change summary.
+
+High-risk Terminal and Write actions require Vault unlock and expose only Once. Their local results are never automatically shared with the model or stored in Vault. The active locale controls prose and RTL/LTR behavior; technical values, paths, hashes, and argv remain explicit LTR/BDI.

@@ -1993,3 +1993,13 @@ A saved conversation may contain an explicitly saved model-share attachment. Raw
 A user-controlled end-to-end verification ran on the home system using only `/tmp/personal-ai-model-share-synthetic.txt`, a 214-byte synthetic file containing no personal data, credentials, secrets, or recovery material. The flow completed as designed: preview, confirmed text read, fixed one-chunk plan, separate model-share acknowledgement, local Qwen CPU inference, collapsed chat attachment card, and final assistant response.
 
 The Vault remained locked throughout. No attachment was saved, no personal file was accessed, and no network action occurred. The local model was loaded only after the explicit start action.
+
+## Unified User-Controlled Executors Design v1
+
+Three future Ubuntu executors share a one-action, one-preview, one-fresh-confirmation contract: Application Launch, Structured Terminal, and Write File. None may be called autonomously by the model. OS sandboxing, lock screens, desktop permissions, and sudo prompts are never bypassed.
+
+Application Launch accepts only a user-supplied exact desktop ID or `.desktop` path. It does not enumerate installed applications. Its preview resolves the desktop entry, processed Exec form, entry digest, and expected effect. Shell command strings and file/URL placeholders are excluded in v1. Launch defaults to Once; only this safe capability may later use revocable session/scoped grants while the Vault is unlocked.
+
+Structured Terminal accepts only exact argv, canonical cwd, expected effect, and user-selected timeout. Shells, operators, stdin, sudo, environment injection, and newline arguments are rejected. It is high-risk, Vault-unlocked, and Once-only. Runtime output is capped at 64KiB for local UI display, never stored in Vault/audit/model context, and audits record only executable, argv digest, exit code, duration, and truncation state. Default timeout is 30 seconds and the user may choose up to 600 seconds in preview.
+
+Write File accepts UTF-8 text up to 1 MiB only within a selected canonical scope. Preview declares create/overwrite, existing/new digest, byte size, and diff. Existing-file overwrite is valid only when the current digest still matches the preview. Writes use a same-directory temporary file and atomic replacement. New files use mode 0600; existing permissions are retained. Write is Vault-unlocked and Once-only, with metadata-only audit and no content in audit records.

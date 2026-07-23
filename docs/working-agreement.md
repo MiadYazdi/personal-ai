@@ -182,3 +182,12 @@ Generated runtime paths remain Git-ignored. The Vault is not used as a synchroni
 - Raw shared content is visible in a collapsed conversation card. It remains temporary unless the user explicitly saves the conversation while the Vault is unlocked.
 - Saved raw attachments are encrypted in Vault chunks and are deleted with the conversation. Audit records contain metadata only, never raw content.
 - No model-share test or implementation step accesses a real user file, unlocks a real Vault, or invokes the real model without an explicit user action in the live UI.
+
+## Unified Executor Consent Policy v1
+
+- The model never autonomously invokes Launch, Terminal, or Write File executors.
+- A user-requested action is not silently blocked solely because it is dangerous; it receives a precise preview, risk warning, and fresh one-time confirmation.
+- Terminal and Write are Vault-unlocked, Once-only actions. Launch defaults to Once and any safe session/scoped grant remains visible, editable, revocable, and device/scope-bound.
+- Terminal output and write content do not enter model context, audit records, or Vault automatically.
+- Any preview-changing condition, including target path, argv, timeout, source digest, or overwrite digest, invalidates the prior approval.
+- Implementation tests use only synthetic commands, files, and desktop entries. Real application launch, terminal command, or file write requires a separate explicit user-controlled verification action.

@@ -3030,3 +3030,20 @@ textarea::placeholder { text-align: inherit; }
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Write File Picker Layout v1.2 */
+.write-picker-row {
+  display: block;
+}
+
+.write-picker-row label {
+  display: block;
+  width: 100%;
+}
+
+.write-picker-row .button {
+  justify-content: center;
+  margin-top: 8px;
+  width: 100%;
+}

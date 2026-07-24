@@ -1190,3 +1190,7 @@ The Device Agent exposes Write File as a separate preview panel. Technical path,
 ## Write File Picker UX v1.1
 
 Write File presents the approved scope and target fields beside their corresponding native-picker controls. The default preview uses `/tmp` and a relative synthetic filename, so no picker is required for a safe preview. Selecting a directory fills the scope. Selecting a save-file path automatically splits its parent into scope and its basename into target. Native-picker technical failures are shown as explicit LTR details below the localized error, while no picker is opened except through a user click.
+
+## Write File Picker Layout v1.2
+
+For narrow panels, Write File keeps each editable path field full-width and places its system-selection control directly below it. This preserves readable LTR paths and avoids truncating the selected scope or target path. The controls remain user-initiated native-picker actions.

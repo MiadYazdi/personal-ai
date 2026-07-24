@@ -4,8 +4,10 @@ import { AlertTriangle, Eye, Laptop, ShieldCheck, X } from "lucide-react";
 import {
   fetchDeviceAgentAuditStatus,
   fetchDeviceAgentCapabilities,
+  executeApplicationLaunch,
   previewApplicationLaunch,
   previewDeviceAgentAction,
+  type ApplicationLaunchExecution,
   type ApplicationLaunchPreview,
   type DeviceAgentCapability,
   type DeviceAgentPreview,
@@ -37,13 +39,18 @@ type Text = {
   resolvedExec: string;
   digest: string;
   launchWarning: string;
+  launchConfirm: string;
+  launchRun: string;
+  launchRunning: string;
+  launchResult: string;
+  launchError: string;
 };
 
 const text: Record<AppLanguage, Text> = {
-  fa: { title: "عامل دستگاه", subtitle: "فقط پیش‌نمایش سیاست مجوز؛ هیچ اقدام سیستمی اجرا نمی‌شود.", adapter: "Ubuntu فقط خواندنی", preview: "پیش‌نمایش درخواست", check: "بررسی سیاست مجوز", scope: "دامنهٔ هدف", description: "توضیح اقدام", effect: "اثر مورد انتظار", terminal: "آرگومان‌های دقیق ترمینال", risk: "سطح ریسک", allowed: "تصمیم‌های مجاز", vault: "باز کردن Vault لازم است", audit: "ثبت موقت ممیزی", pending: "مورد در انتظار", close: "بستن", error: "دادهٔ عامل دستگاه بارگذاری نشد.", launchTitle: "پیش‌نمایش باز کردن برنامه", desktopEntry: "شناسه یا مسیر ورودی برنامه", launchPreview: "بررسی برنامه", applicationName: "نام برنامه", resolvedExec: "فرمان حل‌شده", digest: "هش", launchWarning: "باز کردن برنامه از مجوزهای خود سیستم‌عامل استفاده می‌کند؛ عامل هیچ مجوزی را دور نمی‌زند." },
-  en: { title: "Device Agent", subtitle: "Policy preview only; no system action can run.", adapter: "Ubuntu read-only", preview: "Action preview", check: "Check policy", scope: "Target scope", description: "Action description", effect: "Expected effect", terminal: "Exact terminal argv", risk: "Risk", allowed: "Allowed decisions", vault: "Vault Unlock required", audit: "Volatile audit", pending: "pending", close: "Close", error: "Device Agent data could not be loaded.", launchTitle: "Application launch preview", desktopEntry: "Desktop entry ID or path", launchPreview: "Preview application", applicationName: "Application name", resolvedExec: "Resolved command", digest: "Digest", launchWarning: "The launched app uses its own OS permissions; the Agent never bypasses them." },
-  ar: { title: "وكيل الجهاز", subtitle: "معاينة policy فقط؛ لا يمكن تنفيذ أي action للنظام.", adapter: "Ubuntu للقراءة فقط", preview: "معاينة action", check: "فحص policy", scope: "Target scope", description: "وصف action", effect: "الأثر المتوقع", terminal: "Terminal argv الدقيق", risk: "المخاطر", allowed: "القرارات المسموحة", vault: "فتح Vault مطلوب", audit: "Audit مؤقت", pending: "قيد الانتظار", close: "إغلاق", error: "تعذر تحميل بيانات وكيل الجهاز.", launchTitle: "معاينة فتح البرنامج", desktopEntry: "معرّف أو مسار إدخال البرنامج", launchPreview: "فحص البرنامج", applicationName: "اسم البرنامج", resolvedExec: "الأمر المحلول", digest: "البصمة", launchWarning: "البرنامج المفتوح يستخدم أذونات نظام التشغيل الخاصة به؛ الوكيل لا يتجاوز أي أذونات." },
-  tr: { title: "Cihaz Aracısı", subtitle: "Yalnızca policy önizlemesi; hiçbir sistem eylemi çalışamaz.", adapter: "Salt okunur Ubuntu", preview: "Action önizlemesi", check: "Policy kontrolü", scope: "Target scope", description: "Action açıklaması", effect: "Beklenen etki", terminal: "Tam terminal argv", risk: "Risk", allowed: "İzin verilen kararlar", vault: "Vault Unlock gerekli", audit: "Volatile audit", pending: "bekliyor", close: "Kapat", error: "Cihaz Aracısı verisi yüklenemedi.", launchTitle: "Uygulama açma önizlemesi", desktopEntry: "Desktop entry kimliği veya yolu", launchPreview: "Uygulamayı önizle", applicationName: "Uygulama adı", resolvedExec: "Çözümlenen komut", digest: "Özet", launchWarning: "Açılan uygulama kendi işletim sistemi izinlerini kullanır; Aracı bunları asla aşmaz." },
+  fa: { title: "عامل دستگاه", subtitle: "فقط پیش‌نمایش سیاست مجوز؛ هیچ اقدام سیستمی اجرا نمی‌شود.", adapter: "Ubuntu فقط خواندنی", preview: "پیش‌نمایش درخواست", check: "بررسی سیاست مجوز", scope: "دامنهٔ هدف", description: "توضیح اقدام", effect: "اثر مورد انتظار", terminal: "آرگومان‌های دقیق ترمینال", risk: "سطح ریسک", allowed: "تصمیم‌های مجاز", vault: "باز کردن Vault لازم است", audit: "ثبت موقت ممیزی", pending: "مورد در انتظار", close: "بستن", error: "دادهٔ عامل دستگاه بارگذاری نشد.", launchTitle: "پیش‌نمایش باز کردن برنامه", desktopEntry: "شناسه یا مسیر ورودی برنامه", launchPreview: "بررسی برنامه", applicationName: "نام برنامه", resolvedExec: "فرمان حل‌شده", digest: "هش", launchWarning: "باز کردن برنامه از مجوزهای خود سیستم‌عامل استفاده می‌کند؛ عامل هیچ مجوزی را دور نمی‌زند.", launchConfirm: "می‌دانم فقط همین برنامهٔ پیش‌نمایش‌شده باز می‌شود.", launchRun: "باز کردن همین برنامه", launchRunning: "در حال باز کردن برنامه…", launchResult: "نتیجهٔ باز کردن برنامه", launchError: "باز کردن برنامه انجام نشد." },
+  en: { title: "Device Agent", subtitle: "Policy preview only; no system action can run.", adapter: "Ubuntu read-only", preview: "Action preview", check: "Check policy", scope: "Target scope", description: "Action description", effect: "Expected effect", terminal: "Exact terminal argv", risk: "Risk", allowed: "Allowed decisions", vault: "Vault Unlock required", audit: "Volatile audit", pending: "pending", close: "Close", error: "Device Agent data could not be loaded.", launchTitle: "Application launch preview", desktopEntry: "Desktop entry ID or path", launchPreview: "Preview application", applicationName: "Application name", resolvedExec: "Resolved command", digest: "Digest", launchWarning: "The launched app uses its own OS permissions; the Agent never bypasses them.", launchConfirm: "I understand that only this previewed application will be opened.", launchRun: "Open this application", launchRunning: "Opening application…", launchResult: "Launch result", launchError: "The application could not be opened." },
+  ar: { title: "وكيل الجهاز", subtitle: "معاينة policy فقط؛ لا يمكن تنفيذ أي action للنظام.", adapter: "Ubuntu للقراءة فقط", preview: "معاينة action", check: "فحص policy", scope: "Target scope", description: "وصف action", effect: "الأثر المتوقع", terminal: "Terminal argv الدقيق", risk: "المخاطر", allowed: "القرارات المسموحة", vault: "فتح Vault مطلوب", audit: "Audit مؤقت", pending: "قيد الانتظار", close: "إغلاق", error: "تعذر تحميل بيانات وكيل الجهاز.", launchTitle: "معاينة فتح البرنامج", desktopEntry: "معرّف أو مسار إدخال البرنامج", launchPreview: "فحص البرنامج", applicationName: "اسم البرنامج", resolvedExec: "الأمر المحلول", digest: "البصمة", launchWarning: "البرنامج المفتوح يستخدم أذونات نظام التشغيل الخاصة به؛ الوكيل لا يتجاوز أي أذونات.", launchConfirm: "أفهم أن هذا البرنامج المعروض في المعاينة فقط سيُفتح.", launchRun: "فتح هذا البرنامج", launchRunning: "جارٍ فتح البرنامج…", launchResult: "نتيجة فتح البرنامج", launchError: "تعذر فتح البرنامج." },
+  tr: { title: "Cihaz Aracısı", subtitle: "Yalnızca policy önizlemesi; hiçbir sistem eylemi çalışamaz.", adapter: "Salt okunur Ubuntu", preview: "Action önizlemesi", check: "Policy kontrolü", scope: "Target scope", description: "Action açıklaması", effect: "Beklenen etki", terminal: "Tam terminal argv", risk: "Risk", allowed: "İzin verilen kararlar", vault: "Vault Unlock gerekli", audit: "Volatile audit", pending: "bekliyor", close: "Kapat", error: "Cihaz Aracısı verisi yüklenemedi.", launchTitle: "Uygulama açma önizlemesi", desktopEntry: "Desktop entry kimliği veya yolu", launchPreview: "Uygulamayı önizle", applicationName: "Uygulama adı", resolvedExec: "Çözümlenen komut", digest: "Özet", launchWarning: "Açılan uygulama kendi işletim sistemi izinlerini kullanır; Aracı bunları asla aşmaz.", launchConfirm: "Yalnızca önizlemesi gösterilen bu uygulamanın açılacağını anlıyorum.", launchRun: "Bu uygulamayı aç", launchRunning: "Uygulama açılıyor…", launchResult: "Uygulama açma sonucu", launchError: "Uygulama açılamadı." },
 };
 
 const capabilities: DeviceAgentCapability[] = ["read_metadata", "launch_app", "run_terminal", "write_file", "delete_file"];
@@ -60,6 +67,9 @@ export function DeviceAgentPanel({ language, thinkingMode, onClose }: { language
   const [desktopEntry, setDesktopEntry] = useState("");
   const [preview, setPreview] = useState<DeviceAgentPreview | null>(null);
   const [launchPreview, setLaunchPreview] = useState<ApplicationLaunchPreview | null>(null);
+  const [launchConfirmed, setLaunchConfirmed] = useState(false);
+  const [launchWorking, setLaunchWorking] = useState(false);
+  const [launchResult, setLaunchResult] = useState<ApplicationLaunchExecution | null>(null);
   const [pending, setPending] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [readOnlyOpen, setReadOnlyOpen] = useState(false);
@@ -77,6 +87,8 @@ export function DeviceAgentPanel({ language, thinkingMode, onClose }: { language
     try {
       if (capability === "launch_app") {
         setLaunchPreview(await previewApplicationLaunch(desktopEntry));
+        setLaunchConfirmed(false);
+        setLaunchResult(null);
         setPreview(null);
       } else {
         const payload: Parameters<typeof previewDeviceAgentAction>[0] = { capability, target_scope: scope, description, preview: effect };
@@ -88,6 +100,19 @@ export function DeviceAgentPanel({ language, thinkingMode, onClose }: { language
     } catch { setPreview(null); setLaunchPreview(null); setError(t.error); }
   };
 
+  const launchApplication = async () => {
+    if (!launchPreview || !launchConfirmed || launchWorking) return;
+    setLaunchWorking(true);
+    try {
+      setLaunchResult(await executeApplicationLaunch(
+        desktopEntry,
+        launchPreview.launch.desktop_sha256,
+      ));
+      setError(null);
+    } catch { setError(t.launchError); }
+    finally { setLaunchWorking(false); }
+  };
+
   return <>
     <div className="agent-layer" dir={direction}>
     <button className="agent-backdrop" onClick={onClose} type="button" />
@@ -97,7 +122,7 @@ export function DeviceAgentPanel({ language, thinkingMode, onClose }: { language
         <section className="agent-section"><div className="agent-status"><ShieldCheck size={18} /><div><strong>{isPersian ? "فقط پیش‌نمایش" : "Preview only"}</strong><span>{isPersian ? "هیچ فرمان، فایل، برنامه یا اقدام دستگاه اجرا نمی‌شود." : "No command, file, app or device action can run"}</span></div></div><p>{t.subtitle}</p></section>
         <section className="agent-section"><h4>{capability === "launch_app" ? t.launchTitle : t.preview}</h4><label><span>{isPersian ? "توانمندی" : "Capability"}</span><select value={capability} onChange={(event) => { setCapability(event.target.value as DeviceAgentCapability); setLaunchPreview(null); setPreview(null); }}>{capabilities.map((item: DeviceAgentCapability) => <option key={item} value={item}>{item}</option>)}</select></label>{capability === "launch_app" ? <><label><span>{t.desktopEntry}</span><input dir="ltr" value={desktopEntry} placeholder="org.example.App.desktop" onChange={(event) => setDesktopEntry(event.target.value)} /></label><p className="agent-muted">{t.launchWarning}</p></> : <><label><span>{t.scope}</span><input dir={direction} value={scope} onChange={(event) => setScope(event.target.value)} /></label><label><span>{t.description}</span><input dir={direction} value={description} onChange={(event) => setDescription(event.target.value)} /></label><label><span>{t.effect}</span><input dir={direction} value={effect} onChange={(event) => setEffect(event.target.value)} /></label>{capability === "run_terminal" && <label><span>{t.terminal}</span><input dir="ltr" value={argv} onChange={(event) => setArgv(event.target.value)} /></label>}</>}<button className="button primary" disabled={capability === "launch_app" && !desktopEntry.trim()} onClick={() => void checkPolicy()} type="button"><Eye size={16} />{capability === "launch_app" ? t.launchPreview : t.check}</button></section>
         {preview && <section className="agent-section agent-preview-result"><p>{t.risk}: {isPersian && preview.policy.risk === "observe" ? "مشاهده" : preview.policy.risk}</p>{preview.policy.vault_required ? <p className="agent-warning"><AlertTriangle size={16} />{t.vault}</p> : <p>{t.allowed}: {isPersian && preview.policy.allowed_decisions.join(", ") === "once" ? "فقط یک‌بار" : preview.policy.allowed_decisions.join(", ") || "none"}</p>}</section>}
-        {launchPreview && <section className="agent-section agent-preview-result"><p><strong>{t.applicationName}:</strong> {launchPreview.launch.application_name}</p><p><strong>{t.desktopEntry}:</strong> <bdi dir="ltr">{launchPreview.launch.desktop_id}</bdi></p><p><strong>{t.resolvedExec}:</strong> <bdi dir="ltr">{launchPreview.launch.argv.join(" ")}</bdi></p><p><strong>{t.digest}:</strong> <bdi dir="ltr">{launchPreview.launch.desktop_sha256}</bdi></p><p className="agent-muted">{t.launchWarning}</p><p>{t.allowed}: {launchPreview.policy.allowed_decisions.join(", ") || "none"}</p></section>}
+        {launchPreview && <section className="agent-section agent-preview-result"><p><strong>{t.applicationName}:</strong> {launchPreview.launch.application_name}</p><p><strong>{t.desktopEntry}:</strong> <bdi dir="ltr">{launchPreview.launch.desktop_id}</bdi></p><p><strong>{t.resolvedExec}:</strong> <bdi dir="ltr">{launchPreview.launch.argv.join(" ")}</bdi></p><p><strong>{t.digest}:</strong> <bdi dir="ltr">{launchPreview.launch.desktop_sha256}</bdi></p><p className="agent-muted">{t.launchWarning}</p><p>{t.allowed}: {launchPreview.policy.allowed_decisions.join(", ") || "none"}</p><label className="readonly-confirm"><input checked={launchConfirmed} disabled={launchWorking} onChange={(event) => setLaunchConfirmed(event.target.checked)} type="checkbox" /><span>{t.launchConfirm}</span></label><button className="button primary" disabled={!launchConfirmed || launchWorking} onClick={() => void launchApplication()} type="button">{launchWorking ? t.launchRunning : t.launchRun}</button>{launchResult && <p><strong>{t.launchResult}:</strong> <bdi dir="ltr">PID {launchResult.execution.pid}</bdi></p>}</section>}
         <button className="button" onClick={() => setReadOnlyOpen(true)} type="button">
           {language === "fa" ? "خواندن فقط‌خواندنی فایل" : "Read-only file access"}
         </button>

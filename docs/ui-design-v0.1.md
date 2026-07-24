@@ -1164,3 +1164,9 @@ High-risk Terminal and Write actions require Vault unlock and expose only Once. 
 The Device Agent preview panel includes an Application Launch mode. The user enters only an exact desktop entry ID or `.desktop` path; the UI does not browse or enumerate installed applications. The preview displays application name, desktop entry identity, resolved Exec argv, entry digest, and the warning that the launched application retains its own operating-system permissions.
 
 This UI subphase has no launch button and no execution path. It renders the existing PermissionEngine policy preview only. Technical paths, argv, and digest values remain LTR/BDI while localized warnings and labels follow the active locale.
+
+## Application Launch Execution UI Implementation v1
+
+After an exact Application Launch preview, the Device Agent UI presents a separate one-time acknowledgement and an explicit launch button. The request sends only the exact desktop entry ID and digest from that preview. The UI reports local PID/argv result or an error; it never captures application output.
+
+The button remains unavailable until the acknowledgement is checked. This UI does not bypass OS permissions, sandboxing, prompts, or lock screens. Synthetic UI/core tests do not start a real application; live execution requires a later, separately confirmed user action.

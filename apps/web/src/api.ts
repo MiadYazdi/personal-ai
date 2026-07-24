@@ -396,3 +396,25 @@ export function previewApplicationLaunch(desktopEntry: string): Promise<Applicat
     body: JSON.stringify({ desktop_entry: desktopEntry }),
   });
 }
+
+
+export type ApplicationLaunchExecution = {
+  launch: ApplicationLaunchPreview["launch"];
+  authorization: { action_id: string; decision: string; pending_audit: boolean; grant_id: string | null };
+  execution: { pid: number; argv: string[]; canonical_desktop_path: string; desktop_sha256: string; started: true };
+  execution_enabled: true;
+};
+
+export function executeApplicationLaunch(
+  desktopEntry: string,
+  expectedDesktopSha256: string,
+): Promise<ApplicationLaunchExecution> {
+  return requestJson("/api/v1/device-agent/launch-execute", {
+    method: "POST",
+    body: JSON.stringify({
+      desktop_entry: desktopEntry,
+      expected_desktop_sha256: expectedDesktopSha256,
+      confirmed: true,
+    }),
+  });
+}

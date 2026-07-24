@@ -25,7 +25,13 @@ async function requestJson<T>(
   });
 
   if (!response.ok) {
-    throw new Error(`Local API returned HTTP ${response.status}`);
+    const payload = await response.json().catch(() => null) as {
+      detail?: unknown;
+    } | null;
+    const detail = typeof payload?.detail === "string"
+      ? payload.detail
+      : `Local API returned HTTP ${response.status}`;
+    throw new Error(detail);
   }
 
   return (await response.json()) as T;

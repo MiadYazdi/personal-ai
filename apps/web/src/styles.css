@@ -3006,3 +3006,27 @@ textarea::placeholder { text-align: inherit; }
   unicode-bidi: plaintext;
   white-space: pre-wrap;
 }
+
+
+/* Write File Picker UX v1.1 */
+.write-picker-row {
+  align-items: end;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.write-picker-row label {
+  min-width: 0;
+}
+
+.write-picker-row .button {
+  min-height: 40px;
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .write-picker-row {
+    grid-template-columns: 1fr;
+  }
+}

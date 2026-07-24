@@ -1186,3 +1186,7 @@ The Device Agent exposes a separate Structured Terminal entry point. Persian and
 ## Write File UI Implementation v1
 
 The Device Agent exposes Write File as a separate preview panel. Technical path, hash, mode, and diff values are LTR; content follows the active Persian/Arabic RTL or English/Turkish LTR direction. No write button is displayed. A later execution UI must require a fresh confirmation after the displayed digest and diff are reviewed.
+
+## Write File Picker UX v1.1
+
+Write File presents the approved scope and target fields beside their corresponding native-picker controls. The default preview uses `/tmp` and a relative synthetic filename, so no picker is required for a safe preview. Selecting a directory fills the scope. Selecting a save-file path automatically splits its parent into scope and its basename into target. Native-picker technical failures are shown as explicit LTR details below the localized error, while no picker is opened except through a user click.

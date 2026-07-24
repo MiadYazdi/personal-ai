@@ -169,17 +169,21 @@ export function WriteFileExecutorPanel({
 }) {
   const t = copy[language];
   const direction = language === "fa" || language === "ar" ? "rtl" : "ltr";
-  const [scope, setScope] = useState("");
-  const [target, setTarget] = useState("");
-  const [content, setContent] = useState("");
+  const [scope, setScope] = useState("/tmp");
+  const [target, setTarget] = useState("personal-ai-write-preview-only.txt");
+  const [content, setContent] = useState(
+    "Personal AI synthetic Write File preview.\nNo file is written by this preview.\n",
+  );
   const [preview, setPreview] = useState<WriteFilePreviewResponse | null>(null);
   const [picking, setPicking] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pickerDetail, setPickerDetail] = useState<string | null>(null);
 
   const resetPreview = () => {
     setPreview(null);
     setError(null);
+    setPickerDetail(null);
   };
 
   const choosePath = async (mode: "select_directory" | "save_file") => {
@@ -191,12 +195,24 @@ export function WriteFileExecutorPanel({
         mode === "select_directory" ? t.chooseFolder : t.chooseFile,
       );
       if (!selected.cancelled && selected.path) {
-        if (mode === "select_directory") setScope(selected.path);
-        else setTarget(selected.path);
+        if (mode === "select_directory") {
+          setScope(selected.path);
+        } else {
+          const separator = selected.path.lastIndexOf("/");
+          if (separator > 0) {
+            setScope(selected.path.slice(0, separator) || "/");
+            setTarget(selected.path.slice(separator + 1));
+          } else {
+            setTarget(selected.path);
+          }
+        }
         resetPreview();
       }
-    } catch {
+    } catch (reason) {
       setError(t.pickerError);
+      setPickerDetail(
+        reason instanceof Error ? reason.message : null,
+      );
     } finally {
       setPicking(false);
     }
@@ -219,9 +235,12 @@ export function WriteFileExecutorPanel({
         }),
       );
       setError(null);
-    } catch {
+    } catch (reason) {
       setPreview(null);
       setError(t.previewError);
+      setPickerDetail(
+        reason instanceof Error ? reason.message : null,
+      );
     } finally {
       setPreviewing(false);
     }
@@ -260,49 +279,51 @@ export function WriteFileExecutorPanel({
           </section>
 
           <section className="agent-section">
-            <label>
-              <span>{t.scope}</span>
-              <input
-                dir="ltr"
-                onChange={(event) => {
-                  setScope(event.target.value);
-                  resetPreview();
-                }}
-                value={scope}
-              />
-            </label>
+            <div className="write-picker-row">
+              <label>
+                <span>{t.scope}</span>
+                <input
+                  dir="ltr"
+                  onChange={(event) => {
+                    setScope(event.target.value);
+                    resetPreview();
+                  }}
+                  value={scope}
+                />
+              </label>
+              <button
+                className="button"
+                disabled={picking}
+                onClick={() => void choosePath("select_directory")}
+                type="button"
+              >
+                <FolderOpen size={16} />
+                {t.chooseFolder}
+              </button>
+            </div>
 
-            <button
-              className="button"
-              disabled={picking}
-              onClick={() => void choosePath("select_directory")}
-              type="button"
-            >
-              <FolderOpen size={16} />
-              {t.chooseFolder}
-            </button>
-
-            <label>
-              <span>{t.target}</span>
-              <input
-                dir="ltr"
-                onChange={(event) => {
-                  setTarget(event.target.value);
-                  resetPreview();
-                }}
-                value={target}
-              />
-            </label>
-
-            <button
-              className="button"
-              disabled={picking}
-              onClick={() => void choosePath("save_file")}
-              type="button"
-            >
-              <Save size={16} />
-              {t.chooseFile}
-            </button>
+            <div className="write-picker-row">
+              <label>
+                <span>{t.target}</span>
+                <input
+                  dir="ltr"
+                  onChange={(event) => {
+                    setTarget(event.target.value);
+                    resetPreview();
+                  }}
+                  value={target}
+                />
+              </label>
+              <button
+                className="button"
+                disabled={picking}
+                onClick={() => void choosePath("save_file")}
+                type="button"
+              >
+                <Save size={16} />
+                {t.chooseFile}
+              </button>
+            </div>
 
             <label>
               <span>{t.content}</span>
@@ -328,7 +349,17 @@ export function WriteFileExecutorPanel({
             </button>
           </section>
 
-          {error && <p className="agent-error">{error}</p>}
+          {error && (
+            <p className="agent-error">
+              {error}
+              {pickerDetail && (
+                <>
+                  {" "}
+                  <bdi dir="ltr">{pickerDetail}</bdi>
+                </>
+              )}
+            </p>
+          )}
 
           {preview && (
             <section className="agent-section agent-preview-result">

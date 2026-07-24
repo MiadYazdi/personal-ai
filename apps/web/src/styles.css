@@ -3115,3 +3115,19 @@ textarea::placeholder { text-align: inherit; }
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Online Control Foundation v1 */
+.online-control-open-button { justify-content: center; width: 100%; }
+.online-control-panel textarea { box-sizing: border-box; min-height: 82px; resize: vertical; width: 100%; }
+.online-control-panel .agent-status span { display: block; margin-top: 4px; }
+.online-evolution-details { border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
+.online-evolution-details > summary { align-items: center; cursor: pointer; display: flex; font-weight: 700; gap: 8px; }
+.online-evolution-content { display: grid; gap: 12px; margin-top: 12px; }
+.online-diff-input { min-height: 160px !important; }
+.online-summary { display: grid; gap: 8px 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.online-summary > p { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.online-summary > .agent-warning,
+.online-summary > details { grid-column: 1 / -1; }
+.online-touched-files { max-height: 160px; overflow: auto; white-space: pre-wrap; }
+@media (max-width: 560px) { .online-summary { grid-template-columns: 1fr; } }

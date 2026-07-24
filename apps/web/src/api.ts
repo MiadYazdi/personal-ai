@@ -494,3 +494,80 @@ export function previewWriteFile(payload: {
     body: JSON.stringify(payload),
   });
 }
+
+export type OnlineControlStatus = {
+  online_default_enabled: false;
+  network_execution_enabled: false;
+  configured_providers: string[];
+  credential_storage: string;
+  controlled_evolution: "proposal_only";
+  automatic_code_apply: false;
+  guardrails: string[];
+};
+
+export type OnlineEgressPreviewResponse = {
+  egress: {
+    provider_id: string;
+    model_id: string;
+    action: string;
+    destination: string;
+    outbound_summary: string;
+    data_categories: string[];
+    estimated_bytes: number;
+    request_sha256: string;
+    network_default_enabled: false;
+    network_execution_enabled: false;
+    requires_fresh_confirmation: true;
+    requires_vault_unlock: true;
+  };
+  policy: DeviceAgentPreview["policy"];
+  execution_enabled: false;
+};
+
+export type ControlledEvolutionPreviewResponse = {
+  evolution: {
+    canonical_repository_scope: string;
+    proposal_summary: string;
+    proposal_sha256: string;
+    diff_sha256: string;
+    diff_bytes: number;
+    touched_files: string[];
+    validation_plan: string[];
+    proposal_only: true;
+    apply_enabled: false;
+    requires_human_review: true;
+    requires_fresh_confirmation: true;
+  };
+  policy: DeviceAgentPreview["policy"];
+  execution_enabled: false;
+};
+
+export function fetchOnlineControlStatus(): Promise<OnlineControlStatus> {
+  return requestJson("/api/v1/online-control/status");
+}
+
+export function previewOnlineEgress(payload: {
+  provider_id: string;
+  model_id: string;
+  action: "online_chat" | "web_search" | "model_update" | "source_update";
+  outbound_summary: string;
+  data_categories: string[];
+  estimated_bytes: number;
+}): Promise<OnlineEgressPreviewResponse> {
+  return requestJson("/api/v1/online-control/egress-preview", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function previewControlledEvolution(payload: {
+  repository_scope: string;
+  proposal_summary: string;
+  proposed_diff: string;
+  validation_plan: string[];
+}): Promise<ControlledEvolutionPreviewResponse> {
+  return requestJson("/api/v1/online-control/evolution-preview", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

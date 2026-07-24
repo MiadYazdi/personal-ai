@@ -20,6 +20,8 @@ import { TerminalExecutorPanel } from "./TerminalExecutorPanel";
 
 import { WriteFileExecutorPanel } from "./WriteFileExecutorPanel";
 
+import { OnlineControlPanel } from "./OnlineControlPanel";
+
 type Text = {
   title: string;
   subtitle: string;
@@ -161,12 +163,33 @@ export function DeviceAgentPanel({ language, thinkingMode, onClose }: { language
     tr: "Dosya yaz",
   }[language];
 
+  const [onlinePanelOpen, setOnlinePanelOpen] = useState(false);
+  const onlineControlLabel = {
+    fa: "اتصال آنلاین و ارتقا",
+    en: "Online connection and evolution",
+    ar: "الاتصال والتطوير عبر الإنترنت",
+    tr: "Çevrimiçi bağlantı ve geliştirme",
+  }[language];
+
   return <>
     <div className="agent-layer" dir={direction}>
     <button className="agent-backdrop" onClick={onClose} type="button" />
     <aside className="agent-panel">
       <header><div><p className="eyebrow"><Laptop size={16} />{t.adapter}</p><h3>{t.title}</h3></div><button className="icon-button" onClick={onClose} type="button"><X size={20} /></button></header>
       <div className="agent-content">
+        <button
+          className="button online-control-open-button"
+          onClick={() => setOnlinePanelOpen(true)}
+          type="button"
+        >
+          {onlineControlLabel}
+        </button>
+        {onlinePanelOpen && (
+          <OnlineControlPanel
+            language={language}
+            onClose={() => setOnlinePanelOpen(false)}
+          />
+        )}
         <button
           className="button write-file-open-button"
           onClick={() => setWritePanelOpen(true)}

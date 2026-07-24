@@ -29,6 +29,10 @@ from personal_ai.agent.terminal_executor import (
     UbuntuStructuredTerminalExecutor,
 )
 from personal_ai.agent.permissions import AgentPermissionError
+from personal_ai.online_control import (
+    OnlineControlError,
+    OnlineControlPlanner,
+)
 from personal_ai.agent.write_executor import (
     UbuntuWriteFileExecutor,
     WriteFileError,
@@ -176,6 +180,22 @@ class WriteFileExecuteRequest(WriteFilePreviewRequest):
     confirmed: bool = False
 
 
+class OnlineEgressPreviewRequest(BaseModel):
+    provider_id: str
+    model_id: str
+    action: Literal["online_chat", "web_search", "model_update", "source_update"]
+    outbound_summary: str
+    data_categories: list[str] = []
+    estimated_bytes: int = 0
+
+
+class ControlledEvolutionPreviewRequest(BaseModel):
+    repository_scope: str
+    proposal_summary: str
+    proposed_diff: str
+    validation_plan: list[str]
+
+
 class AgentTerminalPreviewRequest(BaseModel):
     argv: list[str]
     cwd: str
@@ -276,6 +296,7 @@ def create_app(
     native_picker: UbuntuNativePicker | None = None,
     terminal_executor: UbuntuStructuredTerminalExecutor | None = None,
     write_file_executor: UbuntuWriteFileExecutor | None = None,
+    online_control_planner: OnlineControlPlanner | None = None,
 ) -> FastAPI:
     active_vault_path = vault_path or VAULT_DATABASE_PATH
     active_preference_path = preference_path or UI_PREFERENCES_PATH
@@ -293,6 +314,9 @@ def create_app(
     active_native_picker = native_picker or UbuntuNativePicker()
     active_terminal_executor = terminal_executor or UbuntuStructuredTerminalExecutor()
     active_write_file_executor = write_file_executor or UbuntuWriteFileExecutor()
+    active_online_control_planner = (
+        online_control_planner or OnlineControlPlanner(PROJECT_ROOT)
+    )
     model_share_service = LocalModelShareService(
         active_chat_runtime, read_only_executor, permission_engine
     )
@@ -322,6 +346,7 @@ def create_app(
     app.state.native_picker = active_native_picker
     app.state.terminal_executor = active_terminal_executor
     app.state.write_file_executor = active_write_file_executor
+    app.state.online_control_planner = active_online_control_planner
     app.state.model_share_service = model_share_service
 
     app.add_middleware(
@@ -785,6 +810,85 @@ def create_app(
                 "execution_enabled": True,
             }
         except (WriteFileError, AgentPermissionError) as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @app.get("/api/v1/online-control/status")
+    def online_control_status() -> dict[str, object]:
+        return active_online_control_planner.status()
+
+    @app.post("/api/v1/online-control/egress-preview")
+    def preview_online_egress(
+        request: OnlineEgressPreviewRequest,
+    ) -> dict[str, object]:
+        try:
+            egress = active_online_control_planner.preview_egress(
+                provider_id=request.provider_id,
+                model_id=request.model_id,
+                action=request.action,
+                outbound_summary=request.outbound_summary,
+                data_categories=request.data_categories,
+                estimated_bytes=request.estimated_bytes,
+            )
+            action = AgentActionRequest.create(
+                capability=AgentCapability.NETWORK,
+                target_scope=egress.destination,
+                device_id="ubuntu-current-user-session",
+                description="User-requested online egress preview",
+                preview=(
+                    "Preview external destination and declared data categories "
+                    "without network execution"
+                ),
+                audit_metadata={
+                    "provider_id": egress.provider_id,
+                    "model_id": egress.model_id,
+                    "action": egress.action,
+                    "data_categories": list(egress.data_categories),
+                    "estimated_bytes": egress.estimated_bytes,
+                    "request_sha256": egress.request_sha256,
+                },
+            )
+            return {
+                "egress": egress.to_dict(),
+                "policy": permission_engine.preview(action).to_dict(),
+                "execution_enabled": False,
+            }
+        except OnlineControlError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @app.post("/api/v1/online-control/evolution-preview")
+    def preview_controlled_evolution(
+        request: ControlledEvolutionPreviewRequest,
+    ) -> dict[str, object]:
+        try:
+            evolution = active_online_control_planner.preview_evolution(
+                repository_scope=request.repository_scope,
+                proposal_summary=request.proposal_summary,
+                proposed_diff=request.proposed_diff,
+                validation_plan=request.validation_plan,
+            )
+            action = AgentActionRequest.create(
+                capability=AgentCapability.WRITE_FILE,
+                target_scope=evolution.canonical_repository_scope,
+                device_id="ubuntu-current-user-session",
+                description="User-requested controlled source-evolution preview",
+                preview=(
+                    "Review proposed source diff and validation plan "
+                    "without applying a patch"
+                ),
+                audit_metadata={
+                    "proposal_sha256": evolution.proposal_sha256,
+                    "diff_sha256": evolution.diff_sha256,
+                    "diff_bytes": evolution.diff_bytes,
+                    "touched_files": list(evolution.touched_files),
+                    "validation_plan": list(evolution.validation_plan),
+                },
+            )
+            return {
+                "evolution": evolution.to_dict(),
+                "policy": permission_engine.preview(action).to_dict(),
+                "execution_enabled": False,
+            }
+        except OnlineControlError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
 
     @app.post("/api/v1/device-agent/native-picker")

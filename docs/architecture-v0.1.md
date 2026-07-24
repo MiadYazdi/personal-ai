@@ -2050,3 +2050,9 @@ Structured Terminal UI v1 is preview-only. Exact argv items are entered one per 
 ## Write File UI v1
 
 Write File UI v1 connects only to the local write-preview endpoint. It collects a selected directory scope, target path, and UTF-8 content, then displays create versus overwrite, canonical path, old/new hashes and sizes, retained or new mode, bounded diff, and permission policy. Native folder/save dialogs are invoked only by user click. The UI deliberately has no write-execution control in this version.
+
+## Online Control and Controlled Evolution Foundation v1
+
+Online Control Foundation v1 is local-preview-only. It records a declared provider, model, action, data categories, estimated outbound size, and digest, but has no provider adapter, credential storage, or network execution. Network remains disabled by default and a future real request requires a fresh confirmation and unlocked Vault audit.
+
+Controlled Evolution Foundation v1 accepts a bounded UTF-8 source diff and validation plan only for review. It restricts proposals to the active project root, rejects unsafe paths, returns hashes and touched-file metadata, and never applies code. A future apply workflow must separately require human diff review, tests, source-write confirmation, Git confirmation, and any network-push confirmation.

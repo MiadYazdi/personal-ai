@@ -4,6 +4,7 @@ import configparser
 import hashlib
 import shlex
 import shutil
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Iterable
@@ -20,6 +21,10 @@ BLOCKED_EXECUTABLES = {*SHELL_EXECUTABLES, "env", "sudo", "pkexec"}
 
 class LaunchPreviewError(ValueError):
     """Raised when an exact desktop entry cannot form a safe launch preview."""
+
+
+class LaunchExecutionError(LaunchPreviewError):
+    """Raised when a confirmed exact launch cannot start."""
 
 
 @dataclass(frozen=True)
@@ -43,6 +48,23 @@ class DesktopLaunchPreview:
         }
 
 
+@dataclass(frozen=True)
+class LaunchExecutionResult:
+    pid: int
+    argv: tuple[str, ...]
+    canonical_desktop_path: str
+    desktop_sha256: str
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "pid": self.pid,
+            "argv": list(self.argv),
+            "canonical_desktop_path": self.canonical_desktop_path,
+            "desktop_sha256": self.desktop_sha256,
+            "started": True,
+        }
+
+
 class UbuntuApplicationLaunchPreview:
     """Exact desktop-entry resolution and preview; it never launches an app."""
 
@@ -51,9 +73,11 @@ class UbuntuApplicationLaunchPreview:
         *,
         desktop_roots: Iterable[str | Path] = DEFAULT_DESKTOP_ROOTS,
         executable_resolver: Callable[[str], str | None] = shutil.which,
+        popen_factory: Callable[..., object] = subprocess.Popen,
     ) -> None:
         self._desktop_roots = tuple(Path(root).expanduser() for root in desktop_roots)
         self._executable_resolver = executable_resolver
+        self._popen_factory = popen_factory
 
     def preview(self, desktop_entry: str) -> DesktopLaunchPreview:
         entry_path, desktop_id = self._resolve_exact_entry(desktop_entry)
@@ -88,6 +112,37 @@ class UbuntuApplicationLaunchPreview:
             argv=argv,
             executable_path=str(Path(executable).resolve()),
             desktop_sha256=digest,
+        )
+
+    def launch(
+        self,
+        preview: DesktopLaunchPreview,
+        *,
+        expected_desktop_sha256: str,
+    ) -> LaunchExecutionResult:
+        if preview.desktop_sha256 != expected_desktop_sha256:
+            raise LaunchExecutionError("Desktop entry changed; preview again before launch.")
+        argv = (preview.executable_path, *preview.argv[1:])
+        try:
+            process = self._popen_factory(
+                argv,
+                cwd="/",
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+                close_fds=True,
+            )
+            pid = getattr(process, "pid", None)
+        except OSError as error:
+            raise LaunchExecutionError("Confirmed application could not be started.") from error
+        if not isinstance(pid, int) or pid <= 0:
+            raise LaunchExecutionError("Launch process did not provide a valid PID.")
+        return LaunchExecutionResult(
+            pid=pid,
+            argv=argv,
+            canonical_desktop_path=preview.canonical_desktop_path,
+            desktop_sha256=preview.desktop_sha256,
         )
 
     def _resolve_exact_entry(self, value: str) -> tuple[Path, str]:

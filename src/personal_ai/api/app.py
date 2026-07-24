@@ -19,6 +19,7 @@ from personal_ai.agent import (
     GrantDecision,
 )
 from personal_ai.agent.launch_executor import (
+    LaunchExecutionError,
     LaunchPreviewError,
     UbuntuApplicationLaunchPreview,
 )
@@ -130,6 +131,11 @@ class MemoryCreateRequest(BaseModel):
 
 class LaunchPreviewRequest(BaseModel):
     desktop_entry: str
+
+
+class LaunchExecuteRequest(LaunchPreviewRequest):
+    expected_desktop_sha256: str
+    confirmed: bool = False
 
 
 class AgentTerminalPreviewRequest(BaseModel):
@@ -599,6 +605,40 @@ def create_app(
                 "execution_enabled": False,
             }
         except (LaunchPreviewError, Exception) as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @app.post("/api/v1/device-agent/launch-execute")
+    def execute_application_launch(request: LaunchExecuteRequest) -> dict[str, object]:
+        if not request.confirmed:
+            raise HTTPException(status_code=422, detail="Fresh launch confirmation is required.")
+        try:
+            launch = active_launch_preview_executor.preview(request.desktop_entry)
+            if launch.desktop_sha256 != request.expected_desktop_sha256:
+                raise LaunchExecutionError("Desktop entry changed; preview again before launch.")
+            action = AgentActionRequest.create(
+                capability=AgentCapability.LAUNCH_APP,
+                target_scope=launch.canonical_desktop_path,
+                device_id="ubuntu-current-user-session",
+                description="User-confirmed exact application launch",
+                preview="Launch exact desktop entry without shell execution",
+                audit_metadata={
+                    "desktop_id": launch.desktop_id,
+                    "desktop_sha256": launch.desktop_sha256,
+                    "executable_path": launch.executable_path,
+                },
+            )
+            authorization = permission_engine.approve(action, GrantDecision.ONCE)
+            execution = active_launch_preview_executor.launch(
+                launch,
+                expected_desktop_sha256=request.expected_desktop_sha256,
+            )
+            return {
+                "launch": launch.to_dict(),
+                "authorization": authorization.__dict__,
+                "execution": execution.to_dict(),
+                "execution_enabled": True,
+            }
+        except (LaunchPreviewError, LaunchExecutionError) as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
 
     @app.get("/api/v1/device-agent/audit-status")

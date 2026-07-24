@@ -1202,3 +1202,7 @@ After a successful Write File preview, the editable request form collapses and c
 ## Online Control UI Foundation v1
 
 The Device Agent exposes Online Connection and Controlled Evolution as a separate compact panel. Its egress section is preview-only and shows destination, declared categories, estimated bytes, digest, and explicit no-network status. The source-evolution form is collapsed until opened and never exposes an apply button. Technical identifiers, hashes, and diffs are LTR; Persian and Arabic UI chrome remains RTL.
+
+## Official Google Grounding UI Foundation v1
+
+The Device Agent exposes Official Google Search as a compact preview panel. It shows only whether a local credential is configured, never the credential itself. The user can inspect the exact model, query size, Google endpoint, Google Search tool, request digest, and no-network status. The panel has no execute button; a future real execution requires a separate confirmation UI.

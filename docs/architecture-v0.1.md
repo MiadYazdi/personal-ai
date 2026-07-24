@@ -2056,3 +2056,9 @@ Write File UI v1 connects only to the local write-preview endpoint. It collects 
 Online Control Foundation v1 is local-preview-only. It records a declared provider, model, action, data categories, estimated outbound size, and digest, but has no provider adapter, credential storage, or network execution. Network remains disabled by default and a future real request requires a fresh confirmation and unlocked Vault audit.
 
 Controlled Evolution Foundation v1 accepts a bounded UTF-8 source diff and validation plan only for review. It restricts proposals to the active project root, rejects unsafe paths, returns hashes and touched-file metadata, and never applies code. A future apply workflow must separately require human diff review, tests, source-write confirmation, Git confirmation, and any network-push confirmation.
+
+## Official Google Grounding Connector v1
+
+Official Google Grounding Connector v1 targets Gemini API interactions with the `google_search` tool. The credential is read only at execution time from the local `PERSONAL_AI_GEMINI_API_KEY` environment value; it is never returned through API/UI, stored in the Vault, logged, or requested in chat. Preview records only query hash, character count, model, endpoint, and policy metadata.
+
+The execution route is implemented but has no UI execution control in v1. A real request requires an explicit fresh confirmation, matching preview digest, unlocked Vault, and one-time network authorization. Only the approved query and API credential are sent to Google Gemini; result text and citations return locally. Automated tests inject a fake transport and never connect to Google.

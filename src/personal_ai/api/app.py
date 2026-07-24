@@ -29,6 +29,11 @@ from personal_ai.agent.terminal_executor import (
     UbuntuStructuredTerminalExecutor,
 )
 from personal_ai.agent.permissions import AgentPermissionError
+from personal_ai.google_grounding import (
+    DEFAULT_GEMINI_GROUNDING_MODEL,
+    GoogleGroundingConnector,
+    GoogleGroundingError,
+)
 from personal_ai.online_control import (
     OnlineControlError,
     OnlineControlPlanner,
@@ -180,6 +185,16 @@ class WriteFileExecuteRequest(WriteFilePreviewRequest):
     confirmed: bool = False
 
 
+class GoogleGroundingPreviewRequest(BaseModel):
+    query: str
+    model_id: str = DEFAULT_GEMINI_GROUNDING_MODEL
+
+
+class GoogleGroundingExecuteRequest(GoogleGroundingPreviewRequest):
+    expected_request_sha256: str
+    confirmed: bool = False
+
+
 class OnlineEgressPreviewRequest(BaseModel):
     provider_id: str
     model_id: str
@@ -297,6 +312,7 @@ def create_app(
     terminal_executor: UbuntuStructuredTerminalExecutor | None = None,
     write_file_executor: UbuntuWriteFileExecutor | None = None,
     online_control_planner: OnlineControlPlanner | None = None,
+    google_grounding_connector: GoogleGroundingConnector | None = None,
 ) -> FastAPI:
     active_vault_path = vault_path or VAULT_DATABASE_PATH
     active_preference_path = preference_path or UI_PREFERENCES_PATH
@@ -316,6 +332,9 @@ def create_app(
     active_write_file_executor = write_file_executor or UbuntuWriteFileExecutor()
     active_online_control_planner = (
         online_control_planner or OnlineControlPlanner(PROJECT_ROOT)
+    )
+    active_google_grounding_connector = (
+        google_grounding_connector or GoogleGroundingConnector()
     )
     model_share_service = LocalModelShareService(
         active_chat_runtime, read_only_executor, permission_engine
@@ -347,6 +366,7 @@ def create_app(
     app.state.terminal_executor = active_terminal_executor
     app.state.write_file_executor = active_write_file_executor
     app.state.online_control_planner = active_online_control_planner
+    app.state.google_grounding_connector = active_google_grounding_connector
     app.state.model_share_service = model_share_service
 
     app.add_middleware(
@@ -810,6 +830,89 @@ def create_app(
                 "execution_enabled": True,
             }
         except (WriteFileError, AgentPermissionError) as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @app.get("/api/v1/online-control/google-grounding-status")
+    def google_grounding_status() -> dict[str, object]:
+        return active_google_grounding_connector.status()
+
+    @app.post("/api/v1/online-control/google-grounding-preview")
+    def preview_google_grounding(
+        request: GoogleGroundingPreviewRequest,
+    ) -> dict[str, object]:
+        try:
+            grounding = active_google_grounding_connector.preview(
+                query=request.query,
+                model_id=request.model_id,
+            )
+            action = AgentActionRequest.create(
+                capability=AgentCapability.NETWORK,
+                target_scope=f"google-gemini:{grounding.model_id}",
+                device_id="ubuntu-current-user-session",
+                description="User-requested Google Search Grounding preview",
+                preview=(
+                    "Preview approved Google Gemini request "
+                    "without network execution"
+                ),
+                audit_metadata={
+                    "provider": "google-gemini-grounding",
+                    "model_id": grounding.model_id,
+                    "query_sha256": grounding.query_sha256,
+                    "query_characters": len(grounding.query),
+                    "request_sha256": grounding.request_sha256,
+                },
+            )
+            return {
+                "grounding": grounding.to_dict(),
+                "policy": permission_engine.preview(action).to_dict(),
+                "execution_enabled": False,
+            }
+        except GoogleGroundingError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @app.post("/api/v1/online-control/google-grounding-execute")
+    def execute_google_grounding(
+        request: GoogleGroundingExecuteRequest,
+    ) -> dict[str, object]:
+        if not request.confirmed:
+            raise HTTPException(
+                status_code=422,
+                detail="Fresh Google Grounding confirmation is required.",
+            )
+        try:
+            grounding = active_google_grounding_connector.preview(
+                query=request.query,
+                model_id=request.model_id,
+            )
+            action = AgentActionRequest.create(
+                capability=AgentCapability.NETWORK,
+                target_scope=f"google-gemini:{grounding.model_id}",
+                device_id="ubuntu-current-user-session",
+                description="User-confirmed Google Search Grounding request",
+                preview=(
+                    "Send only the reviewed query to Google Gemini "
+                    "with Google Search grounding"
+                ),
+                audit_metadata={
+                    "provider": "google-gemini-grounding",
+                    "model_id": grounding.model_id,
+                    "query_sha256": grounding.query_sha256,
+                    "query_characters": len(grounding.query),
+                    "request_sha256": grounding.request_sha256,
+                },
+            )
+            authorization = permission_engine.approve(action, GrantDecision.ONCE)
+            result = active_google_grounding_connector.execute(
+                grounding,
+                expected_request_sha256=request.expected_request_sha256,
+            )
+            return {
+                "grounding": grounding.to_dict(),
+                "authorization": authorization.__dict__,
+                "result": result.to_dict(),
+                "execution_enabled": True,
+            }
+        except (GoogleGroundingError, AgentPermissionError) as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
 
     @app.get("/api/v1/online-control/status")

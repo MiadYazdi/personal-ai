@@ -22,6 +22,8 @@ import { WriteFileExecutorPanel } from "./WriteFileExecutorPanel";
 
 import { OnlineControlPanel } from "./OnlineControlPanel";
 
+import { GoogleGroundingPanel } from "./GoogleGroundingPanel";
+
 type Text = {
   title: string;
   subtitle: string;
@@ -171,12 +173,33 @@ export function DeviceAgentPanel({ language, thinkingMode, onClose }: { language
     tr: "Çevrimiçi bağlantı ve geliştirme",
   }[language];
 
+  const [googleGroundingPanelOpen, setGoogleGroundingPanelOpen] = useState(false);
+  const googleGroundingLabel = {
+    fa: "Google Search رسمی",
+    en: "Official Google Search",
+    ar: "بحث Google الرسمي",
+    tr: "Resmî Google Arama",
+  }[language];
+
   return <>
     <div className="agent-layer" dir={direction}>
     <button className="agent-backdrop" onClick={onClose} type="button" />
     <aside className="agent-panel">
       <header><div><p className="eyebrow"><Laptop size={16} />{t.adapter}</p><h3>{t.title}</h3></div><button className="icon-button" onClick={onClose} type="button"><X size={20} /></button></header>
       <div className="agent-content">
+        <button
+          className="button google-grounding-open-button"
+          onClick={() => setGoogleGroundingPanelOpen(true)}
+          type="button"
+        >
+          {googleGroundingLabel}
+        </button>
+        {googleGroundingPanelOpen && (
+          <GoogleGroundingPanel
+            language={language}
+            onClose={() => setGoogleGroundingPanelOpen(false)}
+          />
+        )}
         <button
           className="button online-control-open-button"
           onClick={() => setOnlinePanelOpen(true)}

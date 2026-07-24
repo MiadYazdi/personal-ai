@@ -571,3 +571,42 @@ export function previewControlledEvolution(payload: {
     body: JSON.stringify(payload),
   });
 }
+
+export type GoogleGroundingStatus = {
+  provider: "google-gemini-grounding";
+  configured: boolean;
+  endpoint: string;
+  tool: "google_search";
+  network_execution_enabled: false;
+  credential_source: string;
+};
+
+export type GoogleGroundingPreviewResponse = {
+  grounding: {
+    model_id: string;
+    query_sha256: string;
+    query_characters: number;
+    request_sha256: string;
+    endpoint: string;
+    tool: "google_search";
+    network_execution_enabled: false;
+    requires_fresh_confirmation: true;
+    requires_vault_unlock: true;
+  };
+  policy: DeviceAgentPreview["policy"];
+  execution_enabled: false;
+};
+
+export function fetchGoogleGroundingStatus(): Promise<GoogleGroundingStatus> {
+  return requestJson("/api/v1/online-control/google-grounding-status");
+}
+
+export function previewGoogleGrounding(payload: {
+  query: string;
+  model_id: string;
+}): Promise<GoogleGroundingPreviewResponse> {
+  return requestJson("/api/v1/online-control/google-grounding-preview", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

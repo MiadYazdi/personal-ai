@@ -3131,3 +3131,13 @@ textarea::placeholder { text-align: inherit; }
 .online-summary > details { grid-column: 1 / -1; }
 .online-touched-files { max-height: 160px; overflow: auto; white-space: pre-wrap; }
 @media (max-width: 560px) { .online-summary { grid-template-columns: 1fr; } }
+
+
+/* Google Grounding Foundation v1 */
+.google-grounding-open-button { justify-content: center; width: 100%; }
+.google-grounding-panel textarea { box-sizing: border-box; min-height: 130px; resize: vertical; width: 100%; }
+.google-grounding-panel .agent-status span { align-items: center; display: flex; gap: 5px; margin-top: 4px; }
+.google-summary { display: grid; gap: 8px 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.google-summary > p { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.google-summary > .agent-warning { grid-column: 1 / -1; }
+@media (max-width: 560px) { .google-summary { grid-template-columns: 1fr; } }

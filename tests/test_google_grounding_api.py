@@ -30,6 +30,7 @@ class GoogleGroundingApiTests(unittest.TestCase):
         self.app = create_app(
             vault_path=root / "vault.sqlite3",
             preference_path=root / "preferences.json",
+            internet_access_path=root / "internet-access.json",
             google_grounding_connector=connector,
         )
         self.client = TestClient(self.app)

@@ -2947,3 +2947,18 @@ textarea::placeholder { text-align: inherit; }
   min-height: 34px;
   font-size: .78em;
 }
+
+/* Launch confirmation checkbox inline repair v1 */
+.agent-preview-result .readonly-confirm input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  flex: 0 0 18px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+.agent-preview-result .readonly-confirm span {
+  flex: 1;
+}

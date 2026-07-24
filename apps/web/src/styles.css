@@ -2962,3 +2962,21 @@ textarea::placeholder { text-align: inherit; }
 .agent-preview-result .readonly-confirm span {
   flex: 1;
 }
+
+/* Launch confirmation single-row repair v2 */
+.agent-preview-result label.readonly-confirm {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+}
+
+.agent-preview-result label.readonly-confirm input[type="checkbox"] {
+  order: 0;
+}
+
+.agent-preview-result label.readonly-confirm span {
+  order: 1;
+  text-align: start;
+}

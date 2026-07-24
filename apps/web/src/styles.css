@@ -3141,3 +3141,15 @@ textarea::placeholder { text-align: inherit; }
 .google-summary > p { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .google-summary > .agent-warning { grid-column: 1 / -1; }
 @media (max-width: 560px) { .google-summary { grid-template-columns: 1fr; } }
+
+
+/* Universal Provider Access Console v1 */
+.universal-access-open-button { justify-content: center; width: 100%; }
+.universal-access-panel textarea { box-sizing: border-box; min-height: 96px; resize: vertical; width: 100%; }
+.universal-access-panel .agent-status span { display: block; margin-top: 4px; }
+.provider-registry-details { border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
+.provider-registry-details summary { align-items: center; cursor: pointer; display: flex; font-weight: 700; gap: 8px; }
+.provider-access-summary { display: grid; gap: 8px 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.provider-access-summary > p { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.provider-access-summary > .agent-warning { grid-column: 1 / -1; }
+@media (max-width: 560px) { .provider-access-summary { grid-template-columns: 1fr; } }

@@ -29,6 +29,10 @@ from personal_ai.agent.terminal_executor import (
     UbuntuStructuredTerminalExecutor,
 )
 from personal_ai.agent.permissions import AgentPermissionError
+from personal_ai.provider_registry import (
+    ProviderRegistry,
+    ProviderRegistryError,
+)
 from personal_ai.google_grounding import (
     DEFAULT_GEMINI_GROUNDING_MODEL,
     GoogleGroundingConnector,
@@ -185,6 +189,15 @@ class WriteFileExecuteRequest(WriteFilePreviewRequest):
     confirmed: bool = False
 
 
+class ProviderAccessPreviewRequest(BaseModel):
+    provider_id: str
+    capability: str
+    target_description: str
+    outbound_summary: str
+    data_categories: list[str] = []
+    estimated_bytes: int = 0
+
+
 class GoogleGroundingPreviewRequest(BaseModel):
     query: str
     model_id: str = DEFAULT_GEMINI_GROUNDING_MODEL
@@ -313,6 +326,7 @@ def create_app(
     write_file_executor: UbuntuWriteFileExecutor | None = None,
     online_control_planner: OnlineControlPlanner | None = None,
     google_grounding_connector: GoogleGroundingConnector | None = None,
+    provider_registry: ProviderRegistry | None = None,
 ) -> FastAPI:
     active_vault_path = vault_path or VAULT_DATABASE_PATH
     active_preference_path = preference_path or UI_PREFERENCES_PATH
@@ -336,6 +350,7 @@ def create_app(
     active_google_grounding_connector = (
         google_grounding_connector or GoogleGroundingConnector()
     )
+    active_provider_registry = provider_registry or ProviderRegistry()
     model_share_service = LocalModelShareService(
         active_chat_runtime, read_only_executor, permission_engine
     )
@@ -367,6 +382,7 @@ def create_app(
     app.state.write_file_executor = active_write_file_executor
     app.state.online_control_planner = active_online_control_planner
     app.state.google_grounding_connector = active_google_grounding_connector
+    app.state.provider_registry = active_provider_registry
     app.state.model_share_service = model_share_service
 
     app.add_middleware(
@@ -830,6 +846,56 @@ def create_app(
                 "execution_enabled": True,
             }
         except (WriteFileError, AgentPermissionError) as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @app.get("/api/v1/online-control/providers")
+    def list_online_providers() -> dict[str, object]:
+        return {
+            "providers": active_provider_registry.list_providers(),
+            "network_execution_enabled": False,
+            "automatic_execution": False,
+        }
+
+    @app.post("/api/v1/online-control/provider-access-preview")
+    def preview_provider_access(
+        request: ProviderAccessPreviewRequest,
+    ) -> dict[str, object]:
+        try:
+            preview = active_provider_registry.preview_access(
+                provider_id=request.provider_id,
+                capability=request.capability,
+                target_description=request.target_description,
+                outbound_summary=request.outbound_summary,
+                data_categories=request.data_categories,
+                estimated_bytes=request.estimated_bytes,
+            )
+            action = AgentActionRequest.create(
+                capability=AgentCapability.NETWORK,
+                target_scope=(
+                    f"{preview.provider.provider_id}:"
+                    f"{preview.target_description}"
+                ),
+                device_id="ubuntu-current-user-session",
+                description="User-requested external provider access preview",
+                preview=(
+                    "Preview provider, capability, declared data, "
+                    "estimated cost surface, and destination without execution"
+                ),
+                audit_metadata={
+                    "provider_id": preview.provider.provider_id,
+                    "capability": preview.capability,
+                    "data_categories": list(preview.data_categories),
+                    "estimated_bytes": preview.estimated_bytes,
+                    "outbound_summary_sha256": preview.outbound_summary_sha256,
+                    "request_sha256": preview.request_sha256,
+                },
+            )
+            return {
+                "access": preview.to_dict(),
+                "policy": permission_engine.preview(action).to_dict(),
+                "execution_enabled": False,
+            }
+        except ProviderRegistryError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
 
     @app.get("/api/v1/online-control/google-grounding-status")

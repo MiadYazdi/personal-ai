@@ -2062,3 +2062,9 @@ Controlled Evolution Foundation v1 accepts a bounded UTF-8 source diff and valid
 Official Google Grounding Connector v1 targets Gemini API interactions with the `google_search` tool. The credential is read only at execution time from the local `PERSONAL_AI_GEMINI_API_KEY` environment value; it is never returned through API/UI, stored in the Vault, logged, or requested in chat. Preview records only query hash, character count, model, endpoint, and policy metadata.
 
 The execution route is implemented but has no UI execution control in v1. A real request requires an explicit fresh confirmation, matching preview digest, unlocked Vault, and one-time network authorization. Only the approved query and API credential are sent to Google Gemini; result text and citations return locally. Automated tests inject a fake transport and never connect to Google.
+
+## Universal Provider Access Console v1
+
+Universal Provider Access Console v1 is a local registry and consent-preview layer for Google Gemini, OpenAI, Anthropic, xAI, OpenRouter, OpenAI-compatible services, and future direct web access. Registry entries report provider capability, adapter status, and only a boolean credential-configured state; secret values are never exposed, stored, logged, or requested in chat.
+
+Every access preview binds provider, capability, target description, declared data categories, estimated outbound bytes, and a summary hash. It remains non-executing, requires future one-time confirmation and Vault audit, and flags cost/quota review. Registry presence does not imply a provider adapter is implemented or that a network request can run.

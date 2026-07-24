@@ -24,6 +24,8 @@ import { OnlineControlPanel } from "./OnlineControlPanel";
 
 import { GoogleGroundingPanel } from "./GoogleGroundingPanel";
 
+import { UniversalAccessPanel } from "./UniversalAccessPanel";
+
 type Text = {
   title: string;
   subtitle: string;
@@ -181,12 +183,33 @@ export function DeviceAgentPanel({ language, thinkingMode, onClose }: { language
     tr: "Resmî Google Arama",
   }[language];
 
+  const [universalAccessPanelOpen, setUniversalAccessPanelOpen] = useState(false);
+  const universalAccessLabel = {
+    fa: "مجوزهای سرویس‌های آنلاین",
+    en: "Online service permissions",
+    ar: "أذونات الخدمات عبر الإنترنت",
+    tr: "Çevrimiçi hizmet izinleri",
+  }[language];
+
   return <>
     <div className="agent-layer" dir={direction}>
     <button className="agent-backdrop" onClick={onClose} type="button" />
     <aside className="agent-panel">
       <header><div><p className="eyebrow"><Laptop size={16} />{t.adapter}</p><h3>{t.title}</h3></div><button className="icon-button" onClick={onClose} type="button"><X size={20} /></button></header>
       <div className="agent-content">
+        <button
+          className="button universal-access-open-button"
+          onClick={() => setUniversalAccessPanelOpen(true)}
+          type="button"
+        >
+          {universalAccessLabel}
+        </button>
+        {universalAccessPanelOpen && (
+          <UniversalAccessPanel
+            language={language}
+            onClose={() => setUniversalAccessPanelOpen(false)}
+          />
+        )}
         <button
           className="button google-grounding-open-button"
           onClick={() => setGoogleGroundingPanelOpen(true)}

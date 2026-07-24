@@ -610,3 +610,55 @@ export function previewGoogleGrounding(payload: {
     body: JSON.stringify(payload),
   });
 }
+
+export type OnlineProvider = {
+  provider_id: string;
+  display_name: string;
+  credential_configured: boolean;
+  credential_environment: string | null;
+  capabilities: string[];
+  adapter_status: string;
+  notes: string;
+  secret_exposed: false;
+};
+
+export type ProviderAccessPreviewResponse = {
+  access: {
+    provider: OnlineProvider;
+    capability: string;
+    target_description: string;
+    outbound_summary_sha256: string;
+    data_categories: string[];
+    estimated_bytes: number;
+    request_sha256: string;
+    network_execution_enabled: false;
+    requires_fresh_confirmation: true;
+    requires_vault_unlock: true;
+    cost_review_required: true;
+    automatic_execution: false;
+  };
+  policy: DeviceAgentPreview["policy"];
+  execution_enabled: false;
+};
+
+export function fetchOnlineProviders(): Promise<{
+  providers: OnlineProvider[];
+  network_execution_enabled: false;
+  automatic_execution: false;
+}> {
+  return requestJson("/api/v1/online-control/providers");
+}
+
+export function previewProviderAccess(payload: {
+  provider_id: string;
+  capability: string;
+  target_description: string;
+  outbound_summary: string;
+  data_categories: string[];
+  estimated_bytes: number;
+}): Promise<ProviderAccessPreviewResponse> {
+  return requestJson("/api/v1/online-control/provider-access-preview", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

@@ -1206,3 +1206,7 @@ The Device Agent exposes Online Connection and Controlled Evolution as a separat
 ## Official Google Grounding UI Foundation v1
 
 The Device Agent exposes Official Google Search as a compact preview panel. It shows only whether a local credential is configured, never the credential itself. The user can inspect the exact model, query size, Google endpoint, Google Search tool, request digest, and no-network status. The panel has no execute button; a future real execution requires a separate confirmation UI.
+
+## Universal Provider Access Console UI v1
+
+The Device Agent exposes Online Service Permissions as a compact separate panel. It shows provider, supported capability, declared outgoing-data categories, estimated bytes, destination, adapter status, credential-configured boolean, and request digest before any later execution. Provider details are collapsed by default. The UI exposes no execute control and sends no data externally in this version.

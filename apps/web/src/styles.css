@@ -2980,3 +2980,11 @@ textarea::placeholder { text-align: inherit; }
   order: 1;
   text-align: start;
 }
+
+
+/* Structured Terminal UI v1 */
+.terminal-open-button { width: 100%; justify-content: center; }
+.terminal-panel .agent-status span { display: block; margin-top: 4px; }
+.terminal-argv-input { box-sizing: border-box; min-height: 116px; resize: vertical; width: 100%; }
+.terminal-timeout-row { align-items: center; display: flex; gap: 8px; }
+.terminal-timeout-row input { max-width: 130px; }

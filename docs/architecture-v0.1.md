@@ -2042,3 +2042,7 @@ Write File Executor Core v1 is selected-scope only. The chosen scope must be an 
 Preview returns operation type, old and new SHA-256 values, sizes, retained or new mode, and a unified diff limited to 64 KiB. The request digest binds the canonical scope, path, old hash, new hash, sizes, operation, and target mode. Execution recomputes the preview and rejects any changed target before an atomic same-directory write.
 
 A new file receives mode `0600`; an overwrite retains the prior file mode. Default writing uses a same-directory temporary file plus `fsync`; creation uses an atomic no-replace hard-link step and overwrite uses atomic replacement. Write permission requires an unlocked Vault and a fresh `once` authorization. Audit metadata stores hashes and operation metadata only, never file content. Automated tests inject a fake atomic writer and never write a user file.
+
+## Structured Terminal UI v1
+
+Structured Terminal UI v1 is preview-only. Exact argv items are entered one per line without shell parsing. It shows the resolved executable, canonical working directory, expected effect, timeout, request digest, output limit, and permission policy. Native directory selection is only invoked by a user click. No execute control is exposed in this UI version.

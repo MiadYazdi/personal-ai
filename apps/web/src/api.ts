@@ -428,3 +428,31 @@ export function selectFromSystem(mode: NativePickerMode, title: string): Promise
     body: JSON.stringify({ mode, title }),
   });
 }
+
+
+export type TerminalExecutionPreviewResponse = {
+  terminal: {
+    argv: string[];
+    cwd: string;
+    executable_path: string;
+    expected_effect: string;
+    timeout_seconds: number;
+    request_sha256: string;
+    shell: false;
+    max_output_bytes: number;
+  };
+  policy: DeviceAgentPreview["policy"];
+  execution_enabled: false;
+};
+
+export function previewTerminalExecution(payload: {
+  argv: string[];
+  cwd: string;
+  expected_effect: string;
+  timeout_seconds: number;
+}): Promise<TerminalExecutionPreviewResponse> {
+  return requestJson("/api/v1/device-agent/terminal-preview", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

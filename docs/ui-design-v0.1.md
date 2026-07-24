@@ -1178,3 +1178,7 @@ Read-Only provides system file/folder chooser buttons and Application Launch pro
 ## Write File Executor Core Status v1
 
 The backend preview and execution contracts are available for a future Write File UI. That UI must reuse the native scope/file picker, show create versus overwrite, old/new hashes, bounded diff, target mode, and a separate fresh write confirmation. No Write File UI or real-device write verification is included in this core phase.
+
+## Structured Terminal UI Implementation v1
+
+The Device Agent exposes a separate Structured Terminal entry point. Persian and Arabic chrome is RTL; argv, paths, hashes, and timeout fields remain LTR. The UI offers local preview only and no execute button. A system directory dialog appears only after an explicit user click.

@@ -16,6 +16,8 @@ import {
 import { ReadOnlyExecutorPanel } from "./ReadOnlyExecutorPanel";
 import type { AppLanguage, ThinkingMode } from "./types";
 
+import { TerminalExecutorPanel } from "./TerminalExecutorPanel";
+
 type Text = {
   title: string;
   subtitle: string;
@@ -54,7 +56,7 @@ const text: Record<AppLanguage, Text> = {
   tr: { title: "Cihaz Aracısı", subtitle: "Yalnızca policy önizlemesi; hiçbir sistem eylemi çalışamaz.", adapter: "Salt okunur Ubuntu", preview: "Action önizlemesi", check: "Policy kontrolü", scope: "Target scope", description: "Action açıklaması", effect: "Beklenen etki", terminal: "Tam terminal argv", risk: "Risk", allowed: "İzin verilen kararlar", vault: "Vault Unlock gerekli", audit: "Volatile audit", pending: "bekliyor", close: "Kapat", error: "Cihaz Aracısı verisi yüklenemedi.", launchTitle: "Uygulama açma önizlemesi", desktopEntry: "Desktop entry kimliği veya yolu", launchPreview: "Uygulamayı önizle", applicationName: "Uygulama adı", resolvedExec: "Çözümlenen komut", digest: "Özet", launchWarning: "Açılan uygulama kendi işletim sistemi izinlerini kullanır; Aracı bunları asla aşmaz.", launchConfirm: "Yalnızca önizlemesi gösterilen bu uygulamanın açılacağını anlıyorum.", launchRun: "Bu uygulamayı aç", launchRunning: "Uygulama açılıyor…", launchResult: "Uygulama açma sonucu", launchError: "Uygulama açılamadı." },
 };
 
-const capabilities: DeviceAgentCapability[] = ["read_metadata", "launch_app", "run_terminal", "write_file", "delete_file"];
+const capabilities: DeviceAgentCapability[] = ["read_metadata", "launch_app", "write_file", "delete_file"];
 
 export function DeviceAgentPanel({ language, thinkingMode, onClose }: { language: AppLanguage; thinkingMode: ThinkingMode; onClose: () => void }) {
   const t = text[language];
@@ -141,12 +143,33 @@ export function DeviceAgentPanel({ language, thinkingMode, onClose }: { language
     finally { setLaunchWorking(false); }
   };
 
+  const [terminalPanelOpen, setTerminalPanelOpen] = useState(false);
+  const structuredTerminalLabel = {
+    fa: "فرمان ساخت‌یافته",
+    en: "Structured terminal",
+    ar: "طرفية منظّمة",
+    tr: "Yapılandırılmış terminal",
+  }[language];
+
   return <>
     <div className="agent-layer" dir={direction}>
     <button className="agent-backdrop" onClick={onClose} type="button" />
     <aside className="agent-panel">
       <header><div><p className="eyebrow"><Laptop size={16} />{t.adapter}</p><h3>{t.title}</h3></div><button className="icon-button" onClick={onClose} type="button"><X size={20} /></button></header>
       <div className="agent-content">
+        <button
+          className="button terminal-open-button"
+          onClick={() => setTerminalPanelOpen(true)}
+          type="button"
+        >
+          {structuredTerminalLabel}
+        </button>
+        {terminalPanelOpen && (
+          <TerminalExecutorPanel
+            language={language}
+            onClose={() => setTerminalPanelOpen(false)}
+          />
+        )}
         <section className="agent-section"><div className="agent-status"><ShieldCheck size={18} /><div><strong>{isPersian ? "فقط پیش‌نمایش" : "Preview only"}</strong><span>{isPersian ? "هیچ فرمان، فایل، برنامه یا اقدام دستگاه اجرا نمی‌شود." : "No command, file, app or device action can run"}</span></div></div><p>{t.subtitle}</p></section>
         <section className="agent-section"><h4>{capability === "launch_app" ? t.launchTitle : t.preview}</h4><label><span>{isPersian ? "توانمندی" : "Capability"}</span><select value={capability} onChange={(event) => { setCapability(event.target.value as DeviceAgentCapability); setLaunchPreview(null); setPreview(null); }}>{capabilities.map((item: DeviceAgentCapability) => <option key={item} value={item}>{item}</option>)}</select></label>{capability === "launch_app" ? <><label><span>{t.desktopEntry}</span><input dir="ltr" value={desktopEntry} placeholder="org.example.App.desktop" onChange={(event) => setDesktopEntry(event.target.value)} /></label><button className="button" disabled={launchPicking} onClick={() => void chooseDesktopEntry()} type="button">{launchPickerLabels.choose}</button><p className="agent-muted">{t.launchWarning}</p></> : <><label><span>{t.scope}</span><input dir={direction} value={scope} onChange={(event) => setScope(event.target.value)} /></label><label><span>{t.description}</span><input dir={direction} value={description} onChange={(event) => setDescription(event.target.value)} /></label><label><span>{t.effect}</span><input dir={direction} value={effect} onChange={(event) => setEffect(event.target.value)} /></label>{capability === "run_terminal" && <label><span>{t.terminal}</span><input dir="ltr" value={argv} onChange={(event) => setArgv(event.target.value)} /></label>}</>}<button className="button primary" disabled={capability === "launch_app" && !desktopEntry.trim()} onClick={() => void checkPolicy()} type="button"><Eye size={16} />{capability === "launch_app" ? t.launchPreview : t.check}</button></section>
         {preview && <section className="agent-section agent-preview-result"><p>{t.risk}: {isPersian && preview.policy.risk === "observe" ? "مشاهده" : preview.policy.risk}</p>{preview.policy.vault_required ? <p className="agent-warning"><AlertTriangle size={16} />{t.vault}</p> : <p>{t.allowed}: {isPersian && preview.policy.allowed_decisions.join(", ") === "once" ? "فقط یک‌بار" : preview.policy.allowed_decisions.join(", ") || "none"}</p>}</section>}

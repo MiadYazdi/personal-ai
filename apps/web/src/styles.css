@@ -2936,11 +2936,6 @@ textarea::placeholder { text-align: inherit; }
 .model-share-message pre { max-height: 320px; overflow: auto; margin: 9px 0 0; border: 1px solid var(--border); border-radius: 9px; padding: 10px; background: var(--surface); color: var(--text); white-space: pre-wrap; }
 
 
-/* Launch execution confirmation placement v1 */
-.agent-preview-result .readonly-confirm {
-  order: -1;
-}
-
 /* Native Picker Bridge UI v1 */
 .readonly-picker-actions {
   display: flex;

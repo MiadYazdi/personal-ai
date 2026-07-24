@@ -418,3 +418,13 @@ export function executeApplicationLaunch(
     }),
   });
 }
+
+export type NativePickerMode = "open_file" | "select_directory" | "save_file" | "desktop_entry";
+export type NativePickerSelection = { mode: NativePickerMode; cancelled: boolean; path: string | null };
+
+export function selectFromSystem(mode: NativePickerMode, title: string): Promise<NativePickerSelection> {
+  return requestJson("/api/v1/device-agent/native-picker", {
+    method: "POST",
+    body: JSON.stringify({ mode, title }),
+  });
+}

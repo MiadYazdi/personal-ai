@@ -2940,3 +2940,15 @@ textarea::placeholder { text-align: inherit; }
 .agent-preview-result .readonly-confirm {
   order: -1;
 }
+
+/* Native Picker Bridge UI v1 */
+.readonly-picker-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.readonly-picker-actions .button {
+  min-height: 34px;
+  font-size: .78em;
+}

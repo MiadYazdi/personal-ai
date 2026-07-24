@@ -2015,3 +2015,7 @@ Application Launch Subphase 1 is implemented as an exact desktop-entry preview s
 Application Launch Subphase 2 execution core is implemented without a user-facing launch control. `POST /api/v1/device-agent/launch-execute` requires a fresh confirmation and the SHA-256 digest returned by the exact preview. It resolves the desktop entry again, rejects a changed digest before process creation, authorizes the existing Launch capability with an Once decision, and starts only the resolved executable argv using `subprocess.Popen` with no shell, no stdin, DEVNULL output, a neutral cwd, close_fds, and a new session.
 
 Execution returns only PID, resolved argv, canonical entry path, and digest. Audit metadata contains desktop ID, digest, and executable path; it contains no output or secret content. Fixture tests use FakePopen to verify exact argv, neutral cwd, fresh-confirmation rejection, digest mismatch rejection, pending audit behavior, and non-execution of real applications. Full synthetic verification completed with 70 passing tests and a successful frontend build.
+
+## Native Picker Bridge Implementation v1
+
+Native Picker Bridge v1 uses fixed local `/usr/bin/zenity`, never a shell or user-supplied command. It supports open file, select directory, save file, and desktop-entry selection. It is invoked only by a user click, returns only a selected path or cancellation over loopback, performs no Agent directory scan or action execution, and fails safely without a graphical DBus session. Synthetic tests use fake dialog runners and never open Zenity.

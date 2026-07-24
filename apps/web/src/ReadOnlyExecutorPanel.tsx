@@ -3,6 +3,7 @@ import { AlertTriangle, Eye, FileText, LockKeyhole, Share2, Square, X } from "lu
 
 import {
   cancelModelShare,
+  selectFromSystem,
   executeReadOnlyPath,
   previewModelShare,
   previewReadOnlyPath,
@@ -185,6 +186,12 @@ const copy: Record<AppLanguage, Copy> = {
 export function ReadOnlyExecutorPanel({ language, thinkingMode, onClose }: { language: AppLanguage; thinkingMode: "quick" | "deep"; onClose: () => void }) {
   const t = copy[language];
   const direction = language === "fa" || language === "ar" ? "rtl" : "ltr";
+  const pickerLabels = {
+    fa: { file: "انتخاب فایل از سیستم", folder: "انتخاب پوشه از سیستم", error: "انتخاب مسیر از سیستم انجام نشد." },
+    en: { file: "Choose file from system", folder: "Choose folder from system", error: "System path selection failed." },
+    ar: { file: "اختيار ملف من النظام", folder: "اختيار مجلد من النظام", error: "تعذر اختيار المسار من النظام." },
+    tr: { file: "Sistemden dosya seç", folder: "Sistemden klasör seç", error: "Sistem yolu seçilemedi." },
+  }[language];
   const [path, setPath] = useState("");
   const [mode, setMode] = useState<"read_metadata" | "read_text">("read_metadata");
   const [preview, setPreview] = useState<ReadOnlyPreview | null>(null);
@@ -193,6 +200,7 @@ export function ReadOnlyExecutorPanel({ language, thinkingMode, onClose }: { lan
   const [confirmed, setConfirmed] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isReading, setIsReading] = useState(false);
+  const [picking, setPicking] = useState(false);
   const [sharePlan, setSharePlan] = useState<ModelSharePlan | null>(null);
   const [shareConfirmed, setShareConfirmed] = useState(false);
   const [shareRunning, setShareRunning] = useState(false);
@@ -209,6 +217,25 @@ export function ReadOnlyExecutorPanel({ language, thinkingMode, onClose }: { lan
     setShareConfirmed(false);
     setShareProgress(null);
     setShareError(null);
+  };
+
+  const chooseFromSystem = async (mode: "open_file" | "select_directory") => {
+    if (picking) return;
+    setPicking(true);
+    try {
+      const selected = await selectFromSystem(
+        mode,
+        mode === "open_file" ? pickerLabels.file : pickerLabels.folder,
+      );
+      if (!selected.cancelled && selected.path) {
+        setPath(selected.path);
+        resetForNewRequest();
+      }
+    } catch {
+      setError(pickerLabels.error);
+    } finally {
+      setPicking(false);
+    }
   };
 
   const previewPath = async () => {
@@ -316,6 +343,14 @@ export function ReadOnlyExecutorPanel({ language, thinkingMode, onClose }: { lan
               onChange={(event) => { setPath(event.target.value); resetForNewRequest(); }}
               placeholder="/home/user/selected-file.txt"
             />
+            <div className="readonly-picker-actions">
+              <button className="button" disabled={picking} onClick={() => void chooseFromSystem("open_file")} type="button">
+                {pickerLabels.file}
+              </button>
+              <button className="button" disabled={picking} onClick={() => void chooseFromSystem("select_directory")} type="button">
+                {pickerLabels.folder}
+              </button>
+            </div>
           </label>
           <label>
             <span>{t.mode}</span>

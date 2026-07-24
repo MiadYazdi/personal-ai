@@ -191,3 +191,7 @@ Generated runtime paths remain Git-ignored. The Vault is not used as a synchroni
 - Terminal output and write content do not enter model context, audit records, or Vault automatically.
 - Any preview-changing condition, including target path, argv, timeout, source digest, or overwrite digest, invalidates the prior approval.
 - Implementation tests use only synthetic commands, files, and desktop entries. Real application launch, terminal command, or file write requires a separate explicit user-controlled verification action.
+
+## Bundled Technical Delivery Rule v1
+
+When a subphase contains only approved source/docs/test/build/Git work and no real device action, deliver it as one terminal command: patch, verification, documentation, Git validation, commit, push, and needed local restart. Keep explanations concise. Real dialogs, app launches, terminal execution, file writes, deletion, Vault unlock, model inference, installations, or network changes remain separately disclosed and require fresh confirmation at action time.

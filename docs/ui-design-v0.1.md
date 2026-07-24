@@ -1170,3 +1170,7 @@ This UI subphase has no launch button and no execution path. It renders the exis
 After an exact Application Launch preview, the Device Agent UI presents a separate one-time acknowledgement and an explicit launch button. The request sends only the exact desktop entry ID and digest from that preview. The UI reports local PID/argv result or an error; it never captures application output.
 
 The button remains unavailable until the acknowledgement is checked. This UI does not bypass OS permissions, sandboxing, prompts, or lock screens. Synthetic UI/core tests do not start a real application; live execution requires a later, separately confirmed user action.
+
+## Native Picker Bridge UI Implementation v1
+
+Read-Only provides system file/folder chooser buttons and Application Launch provides a desktop-entry chooser button. The dialog is user initiated; cancellation returns no path. A selected path only fills the existing preview field, so confirmation rules remain unchanged. Terminal and Write executors will reuse this bridge when their UIs are implemented.

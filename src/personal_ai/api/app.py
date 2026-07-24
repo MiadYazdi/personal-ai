@@ -18,6 +18,7 @@ from personal_ai.agent import (
     UbuntuReadOnlyCapabilityAdapter,
     GrantDecision,
 )
+from personal_ai.agent.native_picker import NativePickerError, NativePickerMode, UbuntuNativePicker
 from personal_ai.agent.launch_executor import (
     LaunchExecutionError,
     LaunchPreviewError,
@@ -129,6 +130,11 @@ class MemoryCreateRequest(BaseModel):
     content: str
 
 
+class NativePickerRequest(BaseModel):
+    mode: Literal["open_file", "select_directory", "save_file", "desktop_entry"]
+    title: str
+
+
 class LaunchPreviewRequest(BaseModel):
     desktop_entry: str
 
@@ -235,6 +241,7 @@ def create_app(
     preference_path: Path | None = None,
     chat_runtime: ChatRuntime | None = None,
     launch_preview_executor: UbuntuApplicationLaunchPreview | None = None,
+    native_picker: UbuntuNativePicker | None = None,
 ) -> FastAPI:
     active_vault_path = vault_path or VAULT_DATABASE_PATH
     active_preference_path = preference_path or UI_PREFERENCES_PATH
@@ -249,6 +256,7 @@ def create_app(
     capability_adapter = UbuntuReadOnlyCapabilityAdapter()
     read_only_executor = UbuntuReadOnlyExecutor()
     active_launch_preview_executor = launch_preview_executor or UbuntuApplicationLaunchPreview()
+    active_native_picker = native_picker or UbuntuNativePicker()
     model_share_service = LocalModelShareService(
         active_chat_runtime, read_only_executor, permission_engine
     )
@@ -275,6 +283,7 @@ def create_app(
     app.state.capability_adapter = capability_adapter
     app.state.read_only_executor = read_only_executor
     app.state.launch_preview_executor = active_launch_preview_executor
+    app.state.native_picker = active_native_picker
     app.state.model_share_service = model_share_service
 
     app.add_middleware(
@@ -581,6 +590,13 @@ def create_app(
                 "execution_enabled": False,
             }
         except Exception as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @app.post("/api/v1/device-agent/native-picker")
+    def native_picker_select(request: NativePickerRequest) -> dict[str, object]:
+        try:
+            return active_native_picker.select(NativePickerMode(request.mode), title=request.title).to_dict()
+        except NativePickerError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
 
     @app.post("/api/v1/device-agent/launch-preview")

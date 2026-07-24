@@ -5,6 +5,7 @@ import {
   fetchDeviceAgentAuditStatus,
   fetchDeviceAgentCapabilities,
   executeApplicationLaunch,
+  selectFromSystem,
   previewApplicationLaunch,
   previewDeviceAgentAction,
   type ApplicationLaunchExecution,
@@ -59,6 +60,12 @@ export function DeviceAgentPanel({ language, thinkingMode, onClose }: { language
   const t = text[language];
   const isPersian = language === "fa";
   const direction = language === "fa" || language === "ar" ? "rtl" : "ltr";
+  const launchPickerLabels = {
+    fa: { choose: "انتخاب ورودی برنامه از سیستم", error: "انتخاب برنامه از سیستم انجام نشد." },
+    en: { choose: "Choose application entry from system", error: "System application selection failed." },
+    ar: { choose: "اختيار إدخال البرنامج من النظام", error: "تعذر اختيار البرنامج من النظام." },
+    tr: { choose: "Sistemden uygulama girdisi seç", error: "Sistem uygulaması seçilemedi." },
+  }[language];
   const [capability, setCapability] = useState<DeviceAgentCapability>("read_metadata");
   const [scope, setScope] = useState(isPersian ? "مسیر انتخاب‌شده" : "selected-path");
   const [description, setDescription] = useState(isPersian ? "فقط پیش‌نمایش" : "Preview only");
@@ -69,6 +76,7 @@ export function DeviceAgentPanel({ language, thinkingMode, onClose }: { language
   const [launchPreview, setLaunchPreview] = useState<ApplicationLaunchPreview | null>(null);
   const [launchConfirmed, setLaunchConfirmed] = useState(false);
   const [launchWorking, setLaunchWorking] = useState(false);
+  const [launchPicking, setLaunchPicking] = useState(false);
   const [launchResult, setLaunchResult] = useState<ApplicationLaunchExecution | null>(null);
   const [pending, setPending] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -100,6 +108,24 @@ export function DeviceAgentPanel({ language, thinkingMode, onClose }: { language
     } catch { setPreview(null); setLaunchPreview(null); setError(t.error); }
   };
 
+  const chooseDesktopEntry = async () => {
+    if (launchPicking) return;
+    setLaunchPicking(true);
+    try {
+      const selected = await selectFromSystem("desktop_entry", launchPickerLabels.choose);
+      if (!selected.cancelled && selected.path) {
+        setDesktopEntry(selected.path);
+        setLaunchPreview(null);
+        setLaunchResult(null);
+        setLaunchConfirmed(false);
+      }
+    } catch {
+      setError(launchPickerLabels.error);
+    } finally {
+      setLaunchPicking(false);
+    }
+  };
+
   const launchApplication = async () => {
     if (!launchPreview || !launchConfirmed || launchWorking) return;
     setLaunchWorking(true);
@@ -122,7 +148,7 @@ export function DeviceAgentPanel({ language, thinkingMode, onClose }: { language
       <header><div><p className="eyebrow"><Laptop size={16} />{t.adapter}</p><h3>{t.title}</h3></div><button className="icon-button" onClick={onClose} type="button"><X size={20} /></button></header>
       <div className="agent-content">
         <section className="agent-section"><div className="agent-status"><ShieldCheck size={18} /><div><strong>{isPersian ? "فقط پیش‌نمایش" : "Preview only"}</strong><span>{isPersian ? "هیچ فرمان، فایل، برنامه یا اقدام دستگاه اجرا نمی‌شود." : "No command, file, app or device action can run"}</span></div></div><p>{t.subtitle}</p></section>
-        <section className="agent-section"><h4>{capability === "launch_app" ? t.launchTitle : t.preview}</h4><label><span>{isPersian ? "توانمندی" : "Capability"}</span><select value={capability} onChange={(event) => { setCapability(event.target.value as DeviceAgentCapability); setLaunchPreview(null); setPreview(null); }}>{capabilities.map((item: DeviceAgentCapability) => <option key={item} value={item}>{item}</option>)}</select></label>{capability === "launch_app" ? <><label><span>{t.desktopEntry}</span><input dir="ltr" value={desktopEntry} placeholder="org.example.App.desktop" onChange={(event) => setDesktopEntry(event.target.value)} /></label><p className="agent-muted">{t.launchWarning}</p></> : <><label><span>{t.scope}</span><input dir={direction} value={scope} onChange={(event) => setScope(event.target.value)} /></label><label><span>{t.description}</span><input dir={direction} value={description} onChange={(event) => setDescription(event.target.value)} /></label><label><span>{t.effect}</span><input dir={direction} value={effect} onChange={(event) => setEffect(event.target.value)} /></label>{capability === "run_terminal" && <label><span>{t.terminal}</span><input dir="ltr" value={argv} onChange={(event) => setArgv(event.target.value)} /></label>}</>}<button className="button primary" disabled={capability === "launch_app" && !desktopEntry.trim()} onClick={() => void checkPolicy()} type="button"><Eye size={16} />{capability === "launch_app" ? t.launchPreview : t.check}</button></section>
+        <section className="agent-section"><h4>{capability === "launch_app" ? t.launchTitle : t.preview}</h4><label><span>{isPersian ? "توانمندی" : "Capability"}</span><select value={capability} onChange={(event) => { setCapability(event.target.value as DeviceAgentCapability); setLaunchPreview(null); setPreview(null); }}>{capabilities.map((item: DeviceAgentCapability) => <option key={item} value={item}>{item}</option>)}</select></label>{capability === "launch_app" ? <><label><span>{t.desktopEntry}</span><input dir="ltr" value={desktopEntry} placeholder="org.example.App.desktop" onChange={(event) => setDesktopEntry(event.target.value)} /></label><button className="button" disabled={launchPicking} onClick={() => void chooseDesktopEntry()} type="button">{launchPickerLabels.choose}</button><p className="agent-muted">{t.launchWarning}</p></> : <><label><span>{t.scope}</span><input dir={direction} value={scope} onChange={(event) => setScope(event.target.value)} /></label><label><span>{t.description}</span><input dir={direction} value={description} onChange={(event) => setDescription(event.target.value)} /></label><label><span>{t.effect}</span><input dir={direction} value={effect} onChange={(event) => setEffect(event.target.value)} /></label>{capability === "run_terminal" && <label><span>{t.terminal}</span><input dir="ltr" value={argv} onChange={(event) => setArgv(event.target.value)} /></label>}</>}<button className="button primary" disabled={capability === "launch_app" && !desktopEntry.trim()} onClick={() => void checkPolicy()} type="button"><Eye size={16} />{capability === "launch_app" ? t.launchPreview : t.check}</button></section>
         {preview && <section className="agent-section agent-preview-result"><p>{t.risk}: {isPersian && preview.policy.risk === "observe" ? "مشاهده" : preview.policy.risk}</p>{preview.policy.vault_required ? <p className="agent-warning"><AlertTriangle size={16} />{t.vault}</p> : <p>{t.allowed}: {isPersian && preview.policy.allowed_decisions.join(", ") === "once" ? "فقط یک‌بار" : preview.policy.allowed_decisions.join(", ") || "none"}</p>}</section>}
         {launchPreview && <section className="agent-section agent-preview-result"><p><strong>{t.applicationName}:</strong> {launchPreview.launch.application_name}</p><p><strong>{t.desktopEntry}:</strong> <bdi dir="ltr">{launchPreview.launch.desktop_id}</bdi></p><p><strong>{t.resolvedExec}:</strong> <bdi dir="ltr">{launchPreview.launch.argv.join(" ")}</bdi></p><p><strong>{t.digest}:</strong> <bdi dir="ltr">{launchPreview.launch.desktop_sha256}</bdi></p><p className="agent-muted">{t.launchWarning}</p><p>{t.allowed}: {launchPreview.policy.allowed_decisions.join(", ") || "none"}</p><label className="readonly-confirm"><input checked={launchConfirmed} disabled={launchWorking} onChange={(event) => setLaunchConfirmed(event.target.checked)} type="checkbox" /><span>{t.launchConfirm}</span></label><button className="button primary" disabled={!launchConfirmed || launchWorking} onClick={() => void launchApplication()} type="button">{launchWorking ? t.launchRunning : t.launchRun}</button>{launchResult && <p><strong>{t.launchResult}:</strong> <bdi dir="ltr">PID {launchResult.execution.pid}</bdi></p>}</section>}
         <button className="button" onClick={() => setReadOnlyOpen(true)} type="button">

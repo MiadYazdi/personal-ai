@@ -3075,3 +3075,43 @@ textarea::placeholder { text-align: inherit; }
   min-height: 40px;
   width: 100%;
 }
+
+
+/* Write File Compact Preview v1.3 */
+.write-file-request-toggle {
+  justify-content: center;
+  width: 100%;
+}
+
+.write-file-summary {
+  display: grid;
+  gap: 8px 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.write-file-summary > p {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.write-file-summary > .agent-warning,
+.write-file-summary > .write-file-diff-details {
+  grid-column: 1 / -1;
+}
+
+.write-file-diff-details summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.write-file-diff {
+  max-height: 180px;
+  margin: 10px 0 0;
+}
+
+@media (max-width: 560px) {
+  .write-file-summary {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1194,3 +1194,7 @@ Write File presents the approved scope and target fields beside their correspond
 ## Write File Picker Layout v1.2
 
 For narrow panels, Write File keeps each editable path field full-width and places its system-selection control directly below it. This preserves readable LTR paths and avoids truncating the selected scope or target path. The controls remain user-initiated native-picker actions.
+
+## Write File Compact Preview v1.3
+
+After a successful Write File preview, the editable request form collapses and can be restored through a localized edit button. The result uses a compact metadata grid, while the content diff remains collapsed until explicitly opened. This reduces panel scrolling without hiding hashes, scope, operation, or policy information.

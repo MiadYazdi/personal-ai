@@ -179,11 +179,13 @@ export function WriteFileExecutorPanel({
   const [previewing, setPreviewing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pickerDetail, setPickerDetail] = useState<string | null>(null);
+  const [formExpanded, setFormExpanded] = useState(true);
 
   const resetPreview = () => {
     setPreview(null);
     setError(null);
     setPickerDetail(null);
+    setFormExpanded(true);
   };
 
   const choosePath = async (mode: "select_directory" | "save_file") => {
@@ -227,13 +229,13 @@ export function WriteFileExecutorPanel({
 
     setPreviewing(true);
     try {
-      setPreview(
-        await previewWriteFile({
-          selected_scope: scope.trim(),
-          requested_path: target.trim(),
-          content,
-        }),
-      );
+      const response = await previewWriteFile({
+        selected_scope: scope.trim(),
+        requested_path: target.trim(),
+        content,
+      });
+      setPreview(response);
+      setFormExpanded(false);
       setError(null);
     } catch (reason) {
       setPreview(null);
@@ -249,6 +251,12 @@ export function WriteFileExecutorPanel({
   const operationLabel = preview?.write.operation === "overwrite"
     ? t.overwrite
     : t.create;
+  const writeRequestToggleLabel = {
+    fa: formExpanded ? "پنهان کردن فرم تغییر" : "ویرایش تغییر",
+    en: formExpanded ? "Hide change form" : "Edit change",
+    ar: formExpanded ? "إخفاء نموذج التغيير" : "تعديل التغيير",
+    tr: formExpanded ? "Değişiklik formunu gizle" : "Değişikliği düzenle",
+  }[language];
 
   return (
     <div className="agent-layer" dir={direction}>
@@ -278,7 +286,18 @@ export function WriteFileExecutorPanel({
             </div>
           </section>
 
-          <section className="agent-section">
+          {preview && (
+            <button
+              className="button write-file-request-toggle"
+              onClick={() => setFormExpanded((current) => !current)}
+              type="button"
+            >
+              {writeRequestToggleLabel}
+            </button>
+          )}
+
+          {(!preview || formExpanded) && (
+            <section className="agent-section">
             <div className="write-picker-row">
               <label>
                 <span>{t.scope}</span>
@@ -348,6 +367,7 @@ export function WriteFileExecutorPanel({
               {t.preview}
             </button>
           </section>
+          )}
 
           {error && (
             <p className="agent-error">
@@ -362,7 +382,7 @@ export function WriteFileExecutorPanel({
           )}
 
           {preview && (
-            <section className="agent-section agent-preview-result">
+            <section className="agent-section agent-preview-result write-file-summary">
               <p>
                 <strong>{t.operation}:</strong> {operationLabel}
               </p>
@@ -400,10 +420,12 @@ export function WriteFileExecutorPanel({
                 <AlertTriangle size={16} />
                 {t.vault}
               </p>
-              <h4>{t.diff}</h4>
-              <pre className="write-file-diff" dir="auto">
-                {preview.write.diff || "—"}
-              </pre>
+              <details className="write-file-diff-details">
+                <summary>{t.diff}</summary>
+                <pre className="write-file-diff" dir="auto">
+                  {preview.write.diff || "—"}
+                </pre>
+              </details>
               {preview.write.diff_truncated && (
                 <p className="agent-warning">
                   <AlertTriangle size={16} />

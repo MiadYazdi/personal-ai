@@ -3061,3 +3061,17 @@ textarea::placeholder { text-align: inherit; }
   min-height: 40px;
   width: 100%;
 }
+
+/* Write File Picker Layout v1.2 */
+.write-picker-row {
+  align-items: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.write-picker-row .button {
+  justify-content: center;
+  min-height: 40px;
+  width: 100%;
+}

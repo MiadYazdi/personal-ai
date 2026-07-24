@@ -195,3 +195,19 @@ Generated runtime paths remain Git-ignored. The Vault is not used as a synchroni
 ## Bundled Technical Delivery Rule v1
 
 When a subphase contains only approved source/docs/test/build/Git work and no real device action, deliver it as one terminal command: patch, verification, documentation, Git validation, commit, push, and needed local restart. Keep explanations concise. Real dialogs, app launches, terminal execution, file writes, deletion, Vault unlock, model inference, installations, or network changes remain separately disclosed and require fresh confirmation at action time.
+
+
+## Clean, Compact, and Verifiable Delivery Rule v1
+
+Every delivered interface and technical phase must be clean, organized, compact, and easy to use.
+
+- Keep primary actions and selected values visible; avoid unnecessary internal scrolling.
+- Place each system-picker control directly below its related editable field when that is clearer than a side-by-side layout.
+- Collapse secondary forms after a successful preview and provide a clear localized edit control to restore them.
+- Keep large content such as diffs, logs, and technical detail collapsed until the user explicitly opens it.
+- Show the essential preview first: exact target, operation, canonical path, hashes, scope, policy, and expected effect.
+- Preserve strict RTL/LTR rules: localized Persian/Arabic UI text, and explicit LTR paths, hashes, commands, identifiers, and credentials.
+- Prefer safe defaults and synthetic preview data; never turn a preview into a real action.
+- Treat user visual feedback as a required quality signal. Repair layout, clarity, and usability issues before calling a UI phase complete.
+- Continue bundling approved source, tests, build, documentation, Git validation, commit, push, and required local restart where applicable.
+- Real dialogs, application launch, terminal execution, file writing, deletion, Vault unlock, model inference, installation, system changes, and network actions remain separately disclosed and require fresh user confirmation.

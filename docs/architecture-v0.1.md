@@ -2046,3 +2046,7 @@ A new file receives mode `0600`; an overwrite retains the prior file mode. Defau
 ## Structured Terminal UI v1
 
 Structured Terminal UI v1 is preview-only. Exact argv items are entered one per line without shell parsing. It shows the resolved executable, canonical working directory, expected effect, timeout, request digest, output limit, and permission policy. Native directory selection is only invoked by a user click. No execute control is exposed in this UI version.
+
+## Write File UI v1
+
+Write File UI v1 connects only to the local write-preview endpoint. It collects a selected directory scope, target path, and UTF-8 content, then displays create versus overwrite, canonical path, old/new hashes and sizes, retained or new mode, bounded diff, and permission policy. Native folder/save dialogs are invoked only by user click. The UI deliberately has no write-execution control in this version.

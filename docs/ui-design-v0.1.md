@@ -1182,3 +1182,7 @@ The backend preview and execution contracts are available for a future Write Fil
 ## Structured Terminal UI Implementation v1
 
 The Device Agent exposes a separate Structured Terminal entry point. Persian and Arabic chrome is RTL; argv, paths, hashes, and timeout fields remain LTR. The UI offers local preview only and no execute button. A system directory dialog appears only after an explicit user click.
+
+## Write File UI Implementation v1
+
+The Device Agent exposes Write File as a separate preview panel. Technical path, hash, mode, and diff values are LTR; content follows the active Persian/Arabic RTL or English/Turkish LTR direction. No write button is displayed. A later execution UI must require a fresh confirmation after the displayed digest and diff are reviewed.

@@ -18,6 +18,8 @@ import type { AppLanguage, ThinkingMode } from "./types";
 
 import { TerminalExecutorPanel } from "./TerminalExecutorPanel";
 
+import { WriteFileExecutorPanel } from "./WriteFileExecutorPanel";
+
 type Text = {
   title: string;
   subtitle: string;
@@ -56,7 +58,7 @@ const text: Record<AppLanguage, Text> = {
   tr: { title: "Cihaz Aracısı", subtitle: "Yalnızca policy önizlemesi; hiçbir sistem eylemi çalışamaz.", adapter: "Salt okunur Ubuntu", preview: "Action önizlemesi", check: "Policy kontrolü", scope: "Target scope", description: "Action açıklaması", effect: "Beklenen etki", terminal: "Tam terminal argv", risk: "Risk", allowed: "İzin verilen kararlar", vault: "Vault Unlock gerekli", audit: "Volatile audit", pending: "bekliyor", close: "Kapat", error: "Cihaz Aracısı verisi yüklenemedi.", launchTitle: "Uygulama açma önizlemesi", desktopEntry: "Desktop entry kimliği veya yolu", launchPreview: "Uygulamayı önizle", applicationName: "Uygulama adı", resolvedExec: "Çözümlenen komut", digest: "Özet", launchWarning: "Açılan uygulama kendi işletim sistemi izinlerini kullanır; Aracı bunları asla aşmaz.", launchConfirm: "Yalnızca önizlemesi gösterilen bu uygulamanın açılacağını anlıyorum.", launchRun: "Bu uygulamayı aç", launchRunning: "Uygulama açılıyor…", launchResult: "Uygulama açma sonucu", launchError: "Uygulama açılamadı." },
 };
 
-const capabilities: DeviceAgentCapability[] = ["read_metadata", "launch_app", "write_file", "delete_file"];
+const capabilities: DeviceAgentCapability[] = ["read_metadata", "launch_app", "delete_file"];
 
 export function DeviceAgentPanel({ language, thinkingMode, onClose }: { language: AppLanguage; thinkingMode: ThinkingMode; onClose: () => void }) {
   const t = text[language];
@@ -151,12 +153,33 @@ export function DeviceAgentPanel({ language, thinkingMode, onClose }: { language
     tr: "Yapılandırılmış terminal",
   }[language];
 
+  const [writePanelOpen, setWritePanelOpen] = useState(false);
+  const structuredWriteLabel = {
+    fa: "نوشتن فایل",
+    en: "Write file",
+    ar: "كتابة ملف",
+    tr: "Dosya yaz",
+  }[language];
+
   return <>
     <div className="agent-layer" dir={direction}>
     <button className="agent-backdrop" onClick={onClose} type="button" />
     <aside className="agent-panel">
       <header><div><p className="eyebrow"><Laptop size={16} />{t.adapter}</p><h3>{t.title}</h3></div><button className="icon-button" onClick={onClose} type="button"><X size={20} /></button></header>
       <div className="agent-content">
+        <button
+          className="button write-file-open-button"
+          onClick={() => setWritePanelOpen(true)}
+          type="button"
+        >
+          {structuredWriteLabel}
+        </button>
+        {writePanelOpen && (
+          <WriteFileExecutorPanel
+            language={language}
+            onClose={() => setWritePanelOpen(false)}
+          />
+        )}
         <button
           className="button terminal-open-button"
           onClick={() => setTerminalPanelOpen(true)}

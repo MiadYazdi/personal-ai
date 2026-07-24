@@ -2988,3 +2988,21 @@ textarea::placeholder { text-align: inherit; }
 .terminal-argv-input { box-sizing: border-box; min-height: 116px; resize: vertical; width: 100%; }
 .terminal-timeout-row { align-items: center; display: flex; gap: 8px; }
 .terminal-timeout-row input { max-width: 130px; }
+
+
+/* Write File UI v1 */
+.write-file-open-button { width: 100%; justify-content: center; }
+.write-file-panel .agent-status span { display: block; margin-top: 4px; }
+.write-file-content-input {
+  box-sizing: border-box;
+  min-height: 180px;
+  resize: vertical;
+  width: 100%;
+}
+.write-file-diff {
+  direction: ltr;
+  max-height: 300px;
+  overflow: auto;
+  unicode-bidi: plaintext;
+  white-space: pre-wrap;
+}

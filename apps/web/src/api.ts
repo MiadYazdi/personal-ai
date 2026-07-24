@@ -456,3 +456,35 @@ export function previewTerminalExecution(payload: {
     body: JSON.stringify(payload),
   });
 }
+
+
+export type WriteFilePreviewResponse = {
+  write: {
+    selected_scope: string;
+    canonical_path: string;
+    operation: "create" | "overwrite";
+    old_sha256: string | null;
+    new_sha256: string;
+    old_size_bytes: number;
+    new_size_bytes: number;
+    resulting_mode: string;
+    diff: string;
+    diff_truncated: boolean;
+    request_sha256: string;
+    text_limit_bytes: number;
+    diff_limit_bytes: number;
+  };
+  policy: DeviceAgentPreview["policy"];
+  execution_enabled: false;
+};
+
+export function previewWriteFile(payload: {
+  selected_scope: string;
+  requested_path: string;
+  content: string;
+}): Promise<WriteFilePreviewResponse> {
+  return requestJson("/api/v1/device-agent/write-preview", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

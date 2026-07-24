@@ -2019,3 +2019,26 @@ Execution returns only PID, resolved argv, canonical entry path, and digest. Aud
 ## Native Picker Bridge Implementation v1
 
 Native Picker Bridge v1 uses fixed local `/usr/bin/zenity`, never a shell or user-supplied command. It supports open file, select directory, save file, and desktop-entry selection. It is invoked only by a user click, returns only a selected path or cancellation over loopback, performs no Agent directory scan or action execution, and fails safely without a graphical DBus session. Synthetic tests use fake dialog runners and never open Zenity.
+
+## Structured Terminal Executor Core v1
+
+**Status:** Core API implemented; Terminal UI and native picker wiring remain future work.
+
+- The executor accepts an exact `argv` array and runs it with `shell=False`; it never accepts a shell command string.
+- Shell executables, `sudo`, `env`, `pkexec`, shell operators, and newline-bearing arguments are rejected before preview.
+- The executable is resolved locally, the working directory is canonicalized as an existing directory, and the preview contains a SHA-256 request digest.
+- Execution recomputes the exact preview and requires the matching digest plus a fresh one-time confirmation.
+- Terminal actions require an unlocked Vault and are authorized only with the `once` decision, creating encrypted audit metadata.
+- Timeouts are limited to 1–600 seconds; default timeout is 30 seconds. Captured stdout and stderr are each displayed up to 64 KiB.
+- The process receives no stdin, starts in a new session, and uses no shell.
+- Tests inject a fake runner only. No Terminal Executor command is run during the automated suite.
+
+**Not included in this core phase:** Terminal UI, native directory/executable picker wiring, real-device terminal verification, write-file execution, and persistent terminal grants.
+
+## Write File Executor Core v1
+
+Write File Executor Core v1 is selected-scope only. The chosen scope must be an existing canonical directory; a target may be created or overwritten only inside that scope, and its parent directory must already exist. Symbolic links, non-regular files, binary content, invalid UTF-8, NUL bytes, and text above 1 MiB are rejected.
+
+Preview returns operation type, old and new SHA-256 values, sizes, retained or new mode, and a unified diff limited to 64 KiB. The request digest binds the canonical scope, path, old hash, new hash, sizes, operation, and target mode. Execution recomputes the preview and rejects any changed target before an atomic same-directory write.
+
+A new file receives mode `0600`; an overwrite retains the prior file mode. Default writing uses a same-directory temporary file plus `fsync`; creation uses an atomic no-replace hard-link step and overwrite uses atomic replacement. Write permission requires an unlocked Vault and a fresh `once` authorization. Audit metadata stores hashes and operation metadata only, never file content. Automated tests inject a fake atomic writer and never write a user file.

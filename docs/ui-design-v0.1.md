@@ -1174,3 +1174,7 @@ The button remains unavailable until the acknowledgement is checked. This UI doe
 ## Native Picker Bridge UI Implementation v1
 
 Read-Only provides system file/folder chooser buttons and Application Launch provides a desktop-entry chooser button. The dialog is user initiated; cancellation returns no path. A selected path only fills the existing preview field, so confirmation rules remain unchanged. Terminal and Write executors will reuse this bridge when their UIs are implemented.
+
+## Write File Executor Core Status v1
+
+The backend preview and execution contracts are available for a future Write File UI. That UI must reuse the native scope/file picker, show create versus overwrite, old/new hashes, bounded diff, target mode, and a separate fresh write confirmation. No Write File UI or real-device write verification is included in this core phase.

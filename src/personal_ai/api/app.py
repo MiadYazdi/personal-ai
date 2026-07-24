@@ -24,6 +24,15 @@ from personal_ai.agent.launch_executor import (
     LaunchPreviewError,
     UbuntuApplicationLaunchPreview,
 )
+from personal_ai.agent.terminal_executor import (
+    TerminalExecutionError,
+    UbuntuStructuredTerminalExecutor,
+)
+from personal_ai.agent.permissions import AgentPermissionError
+from personal_ai.agent.write_executor import (
+    UbuntuWriteFileExecutor,
+    WriteFileError,
+)
 from personal_ai.agent.readonly_executor import (
     ReadMode,
     ReadOnlyExecutorError,
@@ -144,6 +153,29 @@ class LaunchExecuteRequest(LaunchPreviewRequest):
     confirmed: bool = False
 
 
+class TerminalExecutionRequest(BaseModel):
+    argv: list[str]
+    cwd: str
+    expected_effect: str
+    timeout_seconds: int = 30
+
+
+class TerminalExecuteRequest(TerminalExecutionRequest):
+    expected_request_sha256: str
+    confirmed: bool = False
+
+
+class WriteFilePreviewRequest(BaseModel):
+    selected_scope: str
+    requested_path: str
+    content: str
+
+
+class WriteFileExecuteRequest(WriteFilePreviewRequest):
+    expected_request_sha256: str
+    confirmed: bool = False
+
+
 class AgentTerminalPreviewRequest(BaseModel):
     argv: list[str]
     cwd: str
@@ -242,6 +274,8 @@ def create_app(
     chat_runtime: ChatRuntime | None = None,
     launch_preview_executor: UbuntuApplicationLaunchPreview | None = None,
     native_picker: UbuntuNativePicker | None = None,
+    terminal_executor: UbuntuStructuredTerminalExecutor | None = None,
+    write_file_executor: UbuntuWriteFileExecutor | None = None,
 ) -> FastAPI:
     active_vault_path = vault_path or VAULT_DATABASE_PATH
     active_preference_path = preference_path or UI_PREFERENCES_PATH
@@ -257,6 +291,8 @@ def create_app(
     read_only_executor = UbuntuReadOnlyExecutor()
     active_launch_preview_executor = launch_preview_executor or UbuntuApplicationLaunchPreview()
     active_native_picker = native_picker or UbuntuNativePicker()
+    active_terminal_executor = terminal_executor or UbuntuStructuredTerminalExecutor()
+    active_write_file_executor = write_file_executor or UbuntuWriteFileExecutor()
     model_share_service = LocalModelShareService(
         active_chat_runtime, read_only_executor, permission_engine
     )
@@ -284,6 +320,8 @@ def create_app(
     app.state.read_only_executor = read_only_executor
     app.state.launch_preview_executor = active_launch_preview_executor
     app.state.native_picker = active_native_picker
+    app.state.terminal_executor = active_terminal_executor
+    app.state.write_file_executor = active_write_file_executor
     app.state.model_share_service = model_share_service
 
     app.add_middleware(
@@ -590,6 +628,163 @@ def create_app(
                 "execution_enabled": False,
             }
         except Exception as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @app.post("/api/v1/device-agent/terminal-preview")
+    def preview_terminal_execution(
+        request: TerminalExecutionRequest,
+    ) -> dict[str, object]:
+        try:
+            terminal = active_terminal_executor.preview(
+                request.argv,
+                request.cwd,
+                request.expected_effect,
+                request.timeout_seconds,
+            )
+            action = AgentActionRequest.create(
+                capability=AgentCapability.RUN_TERMINAL,
+                target_scope=terminal.cwd,
+                device_id="ubuntu-current-user-session",
+                description="User-requested structured terminal preview",
+                preview=terminal.expected_effect,
+                terminal=TerminalPreview(
+                    terminal.argv,
+                    terminal.cwd,
+                    terminal.expected_effect,
+                ),
+                audit_metadata={
+                    "argv_sha256": terminal.request_sha256,
+                    "timeout_seconds": terminal.timeout_seconds,
+                },
+            )
+            return {
+                "terminal": terminal.to_dict(),
+                "policy": permission_engine.preview(action).to_dict(),
+                "execution_enabled": False,
+            }
+        except (TerminalExecutionError, AgentPermissionError) as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @app.post("/api/v1/device-agent/terminal-execute")
+    def execute_terminal(
+        request: TerminalExecuteRequest,
+    ) -> dict[str, object]:
+        if not request.confirmed:
+            raise HTTPException(
+                status_code=422,
+                detail="Fresh terminal confirmation is required.",
+            )
+
+        try:
+            terminal = active_terminal_executor.preview(
+                request.argv,
+                request.cwd,
+                request.expected_effect,
+                request.timeout_seconds,
+            )
+            action = AgentActionRequest.create(
+                capability=AgentCapability.RUN_TERMINAL,
+                target_scope=terminal.cwd,
+                device_id="ubuntu-current-user-session",
+                description="User-confirmed structured terminal execution",
+                preview=terminal.expected_effect,
+                terminal=TerminalPreview(
+                    terminal.argv,
+                    terminal.cwd,
+                    terminal.expected_effect,
+                ),
+                audit_metadata={
+                    "argv_sha256": terminal.request_sha256,
+                    "timeout_seconds": terminal.timeout_seconds,
+                },
+            )
+            authorization = permission_engine.approve(action, GrantDecision.ONCE)
+            result = active_terminal_executor.execute(
+                terminal,
+                expected_request_sha256=request.expected_request_sha256,
+            )
+            return {
+                "terminal": terminal.to_dict(),
+                "authorization": authorization.__dict__,
+                "result": result.to_dict(),
+                "execution_enabled": True,
+            }
+        except (TerminalExecutionError, AgentPermissionError) as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @app.post("/api/v1/device-agent/write-preview")
+    def preview_write_file(
+        request: WriteFilePreviewRequest,
+    ) -> dict[str, object]:
+        try:
+            write_preview = active_write_file_executor.preview(
+                request.selected_scope,
+                request.requested_path,
+                request.content,
+            )
+            action = AgentActionRequest.create(
+                capability=AgentCapability.WRITE_FILE,
+                target_scope=write_preview.canonical_path,
+                device_id="ubuntu-current-user-session",
+                description="User-requested selected-scope text-file write preview",
+                preview=f"{write_preview.operation} exact UTF-8 text file",
+                audit_metadata={
+                    "operation": write_preview.operation,
+                    "old_sha256": write_preview.old_sha256,
+                    "new_sha256": write_preview.new_sha256,
+                    "new_size_bytes": write_preview.new_size_bytes,
+                    "diff_truncated": write_preview.diff_truncated,
+                },
+            )
+            return {
+                "write": write_preview.to_dict(),
+                "policy": permission_engine.preview(action).to_dict(),
+                "execution_enabled": False,
+            }
+        except WriteFileError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @app.post("/api/v1/device-agent/write")
+    def execute_write_file(
+        request: WriteFileExecuteRequest,
+    ) -> dict[str, object]:
+        if not request.confirmed:
+            raise HTTPException(
+                status_code=422,
+                detail="Fresh file-write confirmation is required.",
+            )
+        try:
+            write_preview = active_write_file_executor.preview(
+                request.selected_scope,
+                request.requested_path,
+                request.content,
+            )
+            action = AgentActionRequest.create(
+                capability=AgentCapability.WRITE_FILE,
+                target_scope=write_preview.canonical_path,
+                device_id="ubuntu-current-user-session",
+                description="User-confirmed selected-scope text-file write",
+                preview=f"{write_preview.operation} exact UTF-8 text file",
+                audit_metadata={
+                    "operation": write_preview.operation,
+                    "old_sha256": write_preview.old_sha256,
+                    "new_sha256": write_preview.new_sha256,
+                    "new_size_bytes": write_preview.new_size_bytes,
+                    "diff_truncated": write_preview.diff_truncated,
+                },
+            )
+            authorization = permission_engine.approve(action, GrantDecision.ONCE)
+            result = active_write_file_executor.execute(
+                write_preview,
+                expected_request_sha256=request.expected_request_sha256,
+            )
+            return {
+                "write": write_preview.to_dict(),
+                "authorization": authorization.__dict__,
+                "result": result.to_dict(),
+                "execution_enabled": True,
+            }
+        except (WriteFileError, AgentPermissionError) as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
 
     @app.post("/api/v1/device-agent/native-picker")

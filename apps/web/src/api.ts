@@ -662,3 +662,31 @@ export function previewProviderAccess(payload: {
     body: JSON.stringify(payload),
   });
 }
+
+export type InternetAccessSettings = {
+  master_enabled: boolean;
+  scopes: {
+    google_grounding: boolean;
+    provider_inference: boolean;
+    direct_web: boolean;
+    code_update: boolean;
+  };
+  network_execution_enabled: false;
+  always_requires_fresh_confirmation: true;
+  always_requires_vault_unlock: true;
+  automatic_execution: false;
+};
+
+export function fetchInternetAccessSettings(): Promise<InternetAccessSettings> {
+  return requestJson("/api/v1/internet-access");
+}
+
+export function saveInternetAccessSettings(payload: {
+  master_enabled: boolean;
+  scopes: InternetAccessSettings["scopes"];
+}): Promise<InternetAccessSettings> {
+  return requestJson("/api/v1/internet-access", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}

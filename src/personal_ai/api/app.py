@@ -29,6 +29,10 @@ from personal_ai.agent.terminal_executor import (
     UbuntuStructuredTerminalExecutor,
 )
 from personal_ai.agent.permissions import AgentPermissionError
+from personal_ai.internet_access import (
+    InternetAccessController,
+    InternetAccessError,
+)
 from personal_ai.provider_registry import (
     ProviderRegistry,
     ProviderRegistryError,
@@ -95,6 +99,10 @@ VAULT_DATABASE_PATH = (
 )
 UI_PREFERENCES_PATH = (
     PROJECT_ROOT / "data" / "local" / "ui-preferences.json"
+)
+
+INTERNET_ACCESS_PATH = (
+    PROJECT_ROOT / "data" / "local" / "internet-access.json"
 )
 
 LOCAL_WEB_ORIGINS = [
@@ -187,6 +195,11 @@ class WriteFilePreviewRequest(BaseModel):
 class WriteFileExecuteRequest(WriteFilePreviewRequest):
     expected_request_sha256: str
     confirmed: bool = False
+
+
+class InternetAccessUpdateRequest(BaseModel):
+    master_enabled: bool
+    scopes: dict[str, bool]
 
 
 class ProviderAccessPreviewRequest(BaseModel):
@@ -327,6 +340,8 @@ def create_app(
     online_control_planner: OnlineControlPlanner | None = None,
     google_grounding_connector: GoogleGroundingConnector | None = None,
     provider_registry: ProviderRegistry | None = None,
+    internet_access_path: Path | None = None,
+    internet_access_controller: InternetAccessController | None = None,
 ) -> FastAPI:
     active_vault_path = vault_path or VAULT_DATABASE_PATH
     active_preference_path = preference_path or UI_PREFERENCES_PATH
@@ -351,6 +366,10 @@ def create_app(
         google_grounding_connector or GoogleGroundingConnector()
     )
     active_provider_registry = provider_registry or ProviderRegistry()
+    active_internet_access_controller = (
+        internet_access_controller
+        or InternetAccessController(internet_access_path or INTERNET_ACCESS_PATH)
+    )
     model_share_service = LocalModelShareService(
         active_chat_runtime, read_only_executor, permission_engine
     )
@@ -383,6 +402,7 @@ def create_app(
     app.state.online_control_planner = active_online_control_planner
     app.state.google_grounding_connector = active_google_grounding_connector
     app.state.provider_registry = active_provider_registry
+    app.state.internet_access_controller = active_internet_access_controller
     app.state.model_share_service = model_share_service
 
     app.add_middleware(
@@ -848,6 +868,25 @@ def create_app(
         except (WriteFileError, AgentPermissionError) as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
 
+    @app.get("/api/v1/internet-access")
+    def get_internet_access_settings() -> dict[str, object]:
+        try:
+            return active_internet_access_controller.load().to_dict()
+        except InternetAccessError as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+
+    @app.put("/api/v1/internet-access")
+    def put_internet_access_settings(
+        request: InternetAccessUpdateRequest,
+    ) -> dict[str, object]:
+        try:
+            return active_internet_access_controller.update(
+                master_enabled=request.master_enabled,
+                scopes=request.scopes,
+            ).to_dict()
+        except InternetAccessError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
     @app.get("/api/v1/online-control/providers")
     def list_online_providers() -> dict[str, object]:
         return {
@@ -946,6 +985,9 @@ def create_app(
                 detail="Fresh Google Grounding confirmation is required.",
             )
         try:
+            active_internet_access_controller.require_allowed(
+                "google_grounding"
+            )
             grounding = active_google_grounding_connector.preview(
                 query=request.query,
                 model_id=request.model_id,
@@ -978,7 +1020,11 @@ def create_app(
                 "result": result.to_dict(),
                 "execution_enabled": True,
             }
-        except (GoogleGroundingError, AgentPermissionError) as error:
+        except (
+            GoogleGroundingError,
+            AgentPermissionError,
+            InternetAccessError,
+        ) as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
 
     @app.get("/api/v1/online-control/status")

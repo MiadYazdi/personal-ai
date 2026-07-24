@@ -79,6 +79,20 @@ class GoogleGroundingApiTests(unittest.TestCase):
             200,
         )
 
+        access = self.client.put(
+            "/api/v1/internet-access",
+            json={
+                "master_enabled": True,
+                "scopes": {
+                    "google_grounding": True,
+                    "provider_inference": False,
+                    "direct_web": False,
+                    "code_update": False,
+                },
+            },
+        )
+        self.assertEqual(access.status_code, 200)
+
         preview = self.client.post(
             "/api/v1/online-control/google-grounding-preview",
             json=self.payload(),

@@ -2068,3 +2068,9 @@ The execution route is implemented but has no UI execution control in v1. A real
 Universal Provider Access Console v1 is a local registry and consent-preview layer for Google Gemini, OpenAI, Anthropic, xAI, OpenRouter, OpenAI-compatible services, and future direct web access. Registry entries report provider capability, adapter status, and only a boolean credential-configured state; secret values are never exposed, stored, logged, or requested in chat.
 
 Every access preview binds provider, capability, target description, declared data categories, estimated outbound bytes, and a summary hash. It remains non-executing, requires future one-time confirmation and Vault audit, and flags cost/quota review. Registry presence does not imply a provider adapter is implemented or that a network request can run.
+
+## Internet Access Center v1
+
+Internet Access Center v1 stores only user-selected local access toggles in `data/local/internet-access.json` with mode `0600`. It has a master switch and isolated scopes for Google Grounding, external provider inference, direct web access, and code updates. Defaults deny all access.
+
+A saved scope never bypasses the action protocol: future real network activity must still pass exact preview, matching digest, unlocked Vault audit, provider-cost review, and fresh one-time confirmation. Google Grounding execution now additionally checks the master switch and Google Grounding scope before any network transport can start.

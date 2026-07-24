@@ -1210,3 +1210,7 @@ The Device Agent exposes Official Google Search as a compact preview panel. It s
 ## Universal Provider Access Console UI v1
 
 The Device Agent exposes Online Service Permissions as a compact separate panel. It shows provider, supported capability, declared outgoing-data categories, estimated bytes, destination, adapter status, credential-configured boolean, and request digest before any later execution. Provider details are collapsed by default. The UI exposes no execute control and sends no data externally in this version.
+
+## Internet Access Center UI v1
+
+The Device Agent exposes Internet Access Center as a user-owned local settings panel. It presents a master switch and four independent scopes, then requires an explicit save action. The panel clearly states that enabling a scope does not execute any network action and does not weaken fresh confirmation or Vault requirements.

@@ -26,6 +26,8 @@ import { GoogleGroundingPanel } from "./GoogleGroundingPanel";
 
 import { UniversalAccessPanel } from "./UniversalAccessPanel";
 
+import { InternetAccessPanel } from "./InternetAccessPanel";
+
 type Text = {
   title: string;
   subtitle: string;
@@ -191,12 +193,33 @@ export function DeviceAgentPanel({ language, thinkingMode, onClose }: { language
     tr: "Çevrimiçi hizmet izinleri",
   }[language];
 
+  const [internetAccessPanelOpen, setInternetAccessPanelOpen] = useState(false);
+  const internetAccessLabel = {
+    fa: "مرکز دسترسی اینترنت",
+    en: "Internet Access Center",
+    ar: "مركز الوصول إلى الإنترنت",
+    tr: "İnternet Erişim Merkezi",
+  }[language];
+
   return <>
     <div className="agent-layer" dir={direction}>
     <button className="agent-backdrop" onClick={onClose} type="button" />
     <aside className="agent-panel">
       <header><div><p className="eyebrow"><Laptop size={16} />{t.adapter}</p><h3>{t.title}</h3></div><button className="icon-button" onClick={onClose} type="button"><X size={20} /></button></header>
       <div className="agent-content">
+        <button
+          className="button internet-access-open-button"
+          onClick={() => setInternetAccessPanelOpen(true)}
+          type="button"
+        >
+          {internetAccessLabel}
+        </button>
+        {internetAccessPanelOpen && (
+          <InternetAccessPanel
+            language={language}
+            onClose={() => setInternetAccessPanelOpen(false)}
+          />
+        )}
         <button
           className="button universal-access-open-button"
           onClick={() => setUniversalAccessPanelOpen(true)}

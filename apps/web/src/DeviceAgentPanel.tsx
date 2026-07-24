@@ -104,10 +104,12 @@ export function DeviceAgentPanel({ language, thinkingMode, onClose }: { language
     if (!launchPreview || !launchConfirmed || launchWorking) return;
     setLaunchWorking(true);
     try {
-      setLaunchResult(await executeApplicationLaunch(
+      const result = await executeApplicationLaunch(
         desktopEntry,
         launchPreview.launch.desktop_sha256,
-      ));
+      );
+      setLaunchResult(result);
+      await load();
       setError(null);
     } catch { setError(t.launchError); }
     finally { setLaunchWorking(false); }
